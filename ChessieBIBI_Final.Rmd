@@ -189,8 +189,12 @@ taxa.df <- prep.df2 %>%
   ungroup()
 ```
 ####**1.7** 
-Probabilistic rarefaction as described in Appendix D.  
-```{r warning=FALSE}
+Perform probabilistic rarefaction as described on Final Report page 7 and Appendix D.  
+
+The Chessie BIBI uses rarefied counts of 100 because because that was the lowest common denominator among all the agencies and programs represented in the Chessie BIBI database. The Chessie BIBI was designed using rarefied counts of 100; therefore, changing the sample size will SOMETHING. If, however, you would like to change the rarefied counts to a value other than 100, substitute your number for 100 in the 4^th^ line of code below: `mutate(ratio = YOUR_NUMBER*(reporting_value/sample_sum)) %>% `.  
+
+**WARNING:** every time you rerun the rarefaction scripts below, the resulting data frame will have different rarefied counts for rare species. To preserve the data frame generated at the end of the rarefaction scripts, **taxa.df**, export it as a CSV file and import it prior to the metric calculation steps if you do not plan on running all of the code in one sitting.   
+```{r}
 taxa2.df <- taxa.df %>%                                                                      
   group_by(unique_id) %>%                                                                               
   mutate(sample_sum = sum(reporting_value)) %>%                                                         
@@ -214,7 +218,7 @@ taxa2.df <- taxa.df %>%
    mutate(rare_needed = ifelse(rare_needed > total_rare, total_rare, rare_needed)) %>%                   
    mutate(rare_needed = ifelse(rare_needed < 1, 0, rare_needed)) %>%                                   
    mutate(rare_2b_removed = (total_rare - rare_needed)+1) %>%                                          
-   slice(rare_2b_removed:n()) %>%                                                                       
+   slice(median(rare_2b_removed):n()) %>%                                                                       
    mutate(rare_count =(ifelse(ratio_int == 0, 1, ratio_int))) %>%                                       
    mutate(rare_count_total = sum(rare_count)) %>%                                                        
    ungroup()
@@ -222,8 +226,12 @@ taxa2.df <- taxa.df %>%
  taxa.df <- taxa_join %>%                                                                               
   select(unique_id, icprb_bioregion_id, rare_count, final_id, phylum, subphylum, class, subclass, order, suborder, family, subfamily, tribe, genus, habit, ffg, bibi_tv)
 ```
-###**2.
-CALCULATE THE BIOLOGICAL METRICS**  
+**Optional:**  
+If you would like to preserve the rarefied data frame created above, export it as a CSV. 
+```{r eval=FALSE}
+write.csv(taxa.df, file= "name_of_file.csv")
+```
+###**2. CALCULATE THE BIOLOGICAL METRICS**  
 Now that the data are in the proper format and the samples have been rarefied, the biological metrics can be calcualted using *mmir*. To streamline this process, all of the metrics are computed for each unique_id. Later on, metrics specific to each bioregion will be selected out.  
 
 The first step is to generate a new data frame for the non-rarefied and rarefied data, both of which are needed because not all metrics calculations require rarefied data.     
@@ -234,6 +242,7 @@ non_rare <- prep.df2 %>%
    arrange(unique_id) %>%
    ungroup()
 
+# If you had exported the rarefied data as a CSV above, read it in at this time using: read.csv("name_of_file.csv")
 rare <- taxa.df %>%
    arrange(unique_id) %>%
    ungroup()
