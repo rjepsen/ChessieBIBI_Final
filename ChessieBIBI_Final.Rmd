@@ -6,19 +6,19 @@ output:
     toc: true
     toc_float: true
 ---
-###**INTRODUCTION**  
+###**Introduction**  
 This R-script and documentation is intended as a supplement to the [Smith et al. (2017) final report](https://www.potomacriver.org/wp-content/uploads/2017/05/ChessieBIBI_Report_Final_5-25-2017.pdf) and [appendices](https://www.potomacriver.org/wp-content/uploads/2017/05/ChessieBIBI_Appendix_Final_5-25-2017.pdf). Use the following scripts to calculate the family-and bioregion- level “Chessie BIBI,” or Chesapeake Basin-wide Index of Biotic Integrity for streams and wadeable rivers in the Chesapeake Bay watershed.      
 
-###**BEFORE YOU GET STARTED**  
+###**Before You Get Started**  
 The initial setup of the data tables, installation of the custom packages, and establishing the ODBC connection to the database will likely require a decent input of time. Once, however, this is accomplished, running the scripts should be a fairly quick process.      
 
-In order to implement the following R scripts, RStudio must be installed. If RStudio is not installed, it can be downloaded for free from [https://www.rstudio.com/](https://www.rstudio.com/). This [webpage](https://courses.edx.org/courses/UTAustinX/UT.7.01x/3T2014/56c5437b88fa43cf828bff5371c6a924/) details the short installation process. If RStudio is already installed, check the version that is currently being used (Help -> About RStudio). This script was written in Version 1.1.453, so if you have an older version, you may want to upgrade (Help -> Check for Update -> follow instructions). Currently, a Windows machine must be used for data importation.  
+In order to implement the following R scripts, RStudio must be installed. If RStudio is not installed, it can be downloaded for free from [https://www.rstudio.com/](https://www.rstudio.com/). This [webpage](https://courses.edx.org/courses/UTAustinX/UT.7.01x/3T2014/56c5437b88fa43cf828bff5371c6a924/) details the short installation process. If RStudio is already installed, check the version that is currently being used (Help -> About RStudio). These scripts were written in Version 1.1.453, so if you have an older version, you may want to upgrade (Help -> Check for Update -> follow instructions). Currently, a Windows machine must be used for data importation.    
 
-Once installed, or if already installed, the scripts are designed to be copied and pasted into RStudio. In order to keep your scripts organized, it is suggested that you comment out a header for each code chunk corresponding to these instructions. For example, for the first step of loading packages, type in `# 1.1` as the header.      
+Once RStudio is installed, or if it is already installed, the scripts are designed to be copied and pasted into the RStudio editor. In order to keep the scripts organized, it is suggested that a header is commented out (`#`) for each code chunk corresponding to these instructions. For example, for the first step of loading packages, type in `# 1.1` as the header.      
 
 For those who are new to RStudio, each time a data frame is created, it can be viewed by typing `View(name)` in the console or by clicking its name in the Environment tab on the right.  
 
-###**1. DATA PREPARATION**   
+###**1. Data Preparation**   
 Most macroinvertebrate assemblage data are formatted in a similar manner; however, rarely can data sets from two separate entities be joined without some manipulation. The data preparation functions outlined below manipulate the data to meet formatting requirements necessary for using several custom functions. For these functions to be useful, you must first prepare the data using the provided functions outlined below.  
 
 The following tables are required for the scripts to work. They can be pulled from an MS Access database or uploaded as individual csv files.   
@@ -37,14 +37,12 @@ Please refer to the (name and url) document and practice data set for informatio
 ####**1.1** 
 Set the working directory to a location where the scripts can be saved using `setwd("")`. Don't forget to use a forward slash `/` instead of a backward slash `\` in the path name.   
 
-Load the following packages into the environment. The packages must be installed before they can be opened; to check if a package in already installed, refer to the Packages tab on the right. To install a package, either type `install.packages("name")` or use the Install button under the Packages tab. To open the installed libraries, use `library(name)`.  
+Load the following packages into the environment. The packages must be installed before they can be opened; to check if a package in already installed, refer to the Packages tab on the right. To install a package, either type and run `install.packages("name")` or use the Install button under the Packages tab. To open the installed libraries, type and run `library(name)`.  
 
-* *mmir* is a custom package developed by Zachary Smith used to calculate taxonomic community metrics. The installation process is currently regrettably tricky and may require a certain degree of "messing with." It can be downloaded from the [ICPRB GitHub account](https://github.com/InterstateCommissionPotomacRiverBasin/mmir) using, in RStudio, `devtools::install_github("InterstateCommissionPotomacRiverBasin/mmir")` or `devtools::install_github("zsmith27/mmir", ref = "dev", force = TRUE, quiet = TRUE)`. If the first path does not work, please try the second. The second may prompt you to install other packages, which you should do. After installing those additional packages, retry the installation path. After the installation, *mmir* must be loaded into the environment using `library(mmir)`. Note: the *devtools* package must be installed first. 
+* *mmir* is a custom package developed by Zachary Smith used to calculate taxonomic community metrics. The installation process is currently regrettably tricky and may require a certain degree of "messing with." It can be downloaded from the [ICPRB GitHub account](https://github.com/InterstateCommissionPotomacRiverBasin/mmir) using, in RStudio, `devtools::install_github("InterstateCommissionPotomacRiverBasin/mmir")` or `devtools::install_github("zsmith27/mmir", ref = "dev", force = TRUE, quiet = TRUE)`. If the first path does not work, please try the second. The second may prompt you to install other packages, which you should do. After installing those additional packages, retry the installation path. If there is an error involving RTools, you may need to update it. After the installation, *mmir* must be loaded into the environment using `library(mmir)`. Note: the *devtools* package must be installed first. 
 
 * *bibi2.0* is a custom package developed by Zachary Smith used to automate the data preparation process. It is downloaded in the same manner as *mmir*. Use `devtools::install_github("InterstateCommissionPotomacRiverBasin/bibi2.0")`. Load using `library(bibi2.0)`.
 ```{r message=FALSE}
-#devtools::install_github("InterstateCommissionPotomacRiverBasin/BIBI")
-#library(BIBI)
 library(tidyverse)
 library(stringr)
 library(lubridate)
@@ -231,7 +229,7 @@ If you would like to preserve the rarefied data frame created above, export it a
 ```{r eval=FALSE}
 write.csv(taxa.df, file= "name_of_file.csv")
 ```
-###**2. CALCULATE THE BIOLOGICAL METRICS**  
+###**2. Calculating Biological Metrics**  
 Now that the data are in the proper format and the samples have been rarefied, the biological metrics can be calcualted using *mmir*. To streamline this process, all of the metrics are computed for each unique_id. Later on, metrics specific to each bioregion will be selected out.  
 
 The first step is to generate a new data frame for the non-rarefied and rarefied data, both of which are needed because not all metrics calculations require rarefied data.     
@@ -715,7 +713,7 @@ To download metrics.key as a csv, run the following script. The csv will be stor
 ```{r eval=FALSE}
 write.csv(metrics.key, file= "name_of_file.csv")
 ```
-###**3. METRIC SCORING**  
+###**3. Metric Scoring**  
 ####**3.1**
 Subset **metrics.key** by bioregion, creating a new data frame for each of the twelve bioregions.
 ```{r}
@@ -1872,7 +1870,7 @@ PIED_score$score_rich_trichoptera <-
     PIED_score$rich_trichoptera < 0.45 ~ 0,
     TRUE ~ ((PIED_score$rich_trichoptera-0.45)/(2.03-0.45))*100)
 ```
-###**4. CALCULATING THE CHESSIE BIBI**  
+###**4. Calculating the CHESSIE BIBI**  
 Average the metric score columns for each unique_id with `rowMeans` and `[row,column]`. In `[row,column]`, 'row' is left blank, indicating that all rows are to be used, and 'column' has the range of column numbers containing scores. If you added or removed columns, you will need to adjust the column ranges.  
 
 `na.rm = T` excludes any cells that contain an NA from the calculation.      
@@ -1892,7 +1890,7 @@ SGV_score$chessie_bibi  <- rowMeans(SGV_score[ ,27:47], na.rm = T)
 LNP_score$chessie_bibi  <- rowMeans(LNP_score[ ,15:23], na.rm = T)
 PIED_score$chessie_bibi <- rowMeans(PIED_score[ ,14:21], na.rm = T) 
 ```
-###**5. ASSIGN NARRATIVE RATINGS** 
+###**5. Assigning Narrative Ratings** 
 Use Table 5, Final Report Page 27 to access the values used to assign narrative ratings of Excellent, Very Good, Fair, Poor, or Very Poor to the Chessie BIBI value. The values are different in the various bioregions. 
 ```{r}
 NAPU_score$rating <-
@@ -2003,7 +2001,7 @@ PIED_score$rating <-
     PIED_score$chessie_bibi >= 81.8 ~ "excellent",
     TRUE ~ "ERROR")
 ```
-###**6. VISUALIZATION**  
+###**6. Visualization**  
 ####**6.1** 
 Select out the *unique_id*, *icprb_bioregion_id*, *chessie_bibi*, and *rating* columns from each bioregion. Merge these data into one large data frame, **bibi_ratings_combined**, using a series of `rbind()` calls. `rbind()` only accepts two data frames, which is why it needs to be repeated several times. 
 ```{r}
