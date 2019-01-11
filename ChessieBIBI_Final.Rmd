@@ -254,8 +254,8 @@ rare <- taxa.df %>%
 # Calculate the metrics. Use long.df to specify which data frame to use (non-rarefied or rarefied. First, the non-rarefied data will be used.)
  sample_sum <- non_rare %>%
    group_by(unique_id) %>%
-   mutate(sample_sum = sum(reporting_value)) %>% 
-   unique()
+   summarise(sample_sum = sum(reporting_value)) 
+   
  
  metrics.key$aspt_mod <- taxa_tol_index( 
   long.df = non_rare,
@@ -265,23 +265,15 @@ rare <- taxa.df %>%
   
   pct_gastro_oligo <- non_rare %>%
    group_by(unique_id) %>%
-     #filter(!is.na(class)) %>% 
-      tally(class %in% c("gastropoda", "oligochatea"))
-  metrics.key$pct_gastro_oligo <- pct_gastro_oligo$n / sample_sum$sample_sum 
-  
-  metrics.key$pct_gastro_oligo2 <- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = class,
-  taxon = c("gastropoda", "oligochatea"))
-  
-  metrics.key$pct_diptera <- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = order,
-  taxon = "diptera")
+    filter(!is.na(class)) %>% 
+    summarise(sum = sum(reporting_value[class %in% c("gastropoda", "oligochatea")]))  
+  metrics.key$pct_gastro_oligo <- (pct_gastro_oligo$sum / sample_sum$sample_sum )*100
+
+  pct_diptera <- non_rare %>%
+   group_by(unique_id) %>%
+    filter(!is.na(order)) %>% 
+    summarise(sum = sum(reporting_value[order %in% c("diptera")]))  
+  metrics.key$pct_diptera <- (pct_diptera$sum / sample_sum$sample_sum )*100
   
   metrics.key$gold <- 100 - (metrics.key$pct_gastro_oligo + metrics.key$pct_diptera) 
   
@@ -291,93 +283,83 @@ rare <- taxa.df %>%
   count.col = reporting_value,
   tol.col = bibi_tv)
   
-  metrics.key$pct_arthropoda <- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = phylum,
-  taxon = "arthropoda") 
+  pct_arthropoda <- non_rare %>%
+   group_by(unique_id) %>%
+    filter(!is.na(phylum)) %>% 
+    summarise(sum = sum(reporting_value[phylum %in% c("arthropoda")]))  
+  metrics.key$pct_arthropoda <- (pct_arthropoda$sum / sample_sum$sample_sum )*100
   
-  metrics.key$pct_burrow <- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = habit, 
-  taxon = "burrow")
+  pct_burrow <- non_rare %>%
+   group_by(unique_id) %>%
+    filter(!is.na(habit)) %>% 
+    summarise(sum = sum(reporting_value[habit %in% c("burrow")]))  
+  metrics.key$pct_burrow <- (pct_burrow$sum / sample_sum$sample_sum )*100
+  
+  pct_chironomidae <- non_rare %>%
+     group_by(unique_id) %>%
+      filter(!is.na(family)) %>% 
+      summarise(sum = sum(reporting_value[family %in% c("chironomidae")]))  
+    metrics.key$pct_chironomidae <- (pct_chironomidae$sum / sample_sum$sample_sum )*100
 
-  metrics.key$pct_chironomidae <- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = family,
-  taxon = "chironomidae")
+  pct_cling <- non_rare %>%
+     group_by(unique_id) %>%
+      filter(!is.na(habit)) %>% 
+      summarise(sum = sum(reporting_value[habit %in% c("cling")]))  
+    metrics.key$pct_cling <- (pct_cling$sum / sample_sum$sample_sum )*100  
+ 
+  pct_burrow <- non_rare %>%
+     group_by(unique_id) %>%
+      filter(!is.na(habit)) %>% 
+      summarise(sum = sum(reporting_value[habit %in% c("burrow")]))  
+    metrics.key$pct_burrow <- (pct_burrow$sum / sample_sum$sample_sum )*100  
+ 
+  pct_collect <- non_rare %>%
+     group_by(unique_id) %>%
+      filter(!is.na(ffg)) %>% 
+      summarise(sum = sum(reporting_value[ffg %in% c("filter", "gather")]))  
+    metrics.key$pct_collect <- (pct_collect$sum / sample_sum$sample_sum )*100    
 
-  metrics.key$pct_cling <- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = habit,
-  taxon = "cling")  
+  pct_cote <- non_rare %>%
+     group_by(unique_id) %>%
+      filter(!is.na(order)) %>% 
+      summarise(sum = sum(reporting_value[order %in% c("coleoptera", "trichoptera", "ephemeroptera", "odonata")]))  
+    metrics.key$pct_cote <- (pct_cote$sum / sample_sum$sample_sum )*100
 
-  metrics.key$pct_burrow <- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = habit,
-  taxon = "burrow") 
+  pct_ephemeroptera <- non_rare %>%
+     group_by(unique_id) %>%
+      filter(!is.na(order)) %>% 
+      summarise(sum = sum(reporting_value[order %in% c("ephemeroptera")]))  
+    metrics.key$pct_ephemeroptera <- (pct_ephemeroptera$sum / sample_sum$sample_sum )*100
 
-  metrics.key$pct_collect <- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = ffg,
-  taxon = c("filter", "gather"))
-
-  metrics.key$pct_cote <- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = order,
-  taxon = c("coleoptera",
-            "odonata",
-            "trichoptera",
-            "ephemeroptera"))
-
-  metrics.key$pct_ephemeroptera <- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = order,
-  taxon = "ephemeroptera")
-
-  metrics.key$pct_baetidae <- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = family,
-  taxon = "baetidae")
-
+  pct_baetidae <- non_rare %>%
+     group_by(unique_id) %>%
+      filter(!is.na(family)) %>% 
+      summarise(sum = sum(reporting_value[family %in% c("baetidae")]))  
+    metrics.key$pct_baetidae <- (pct_baetidae$sum / sample_sum$sample_sum )*100
+    
   metrics.key$pct_ephemeroptera_no_baetid <- metrics.key$pct_ephemeroptera - metrics.key$pct_baetidae
 
-  metrics.key$pct_ept <- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = order,
-  taxon = c("ephemeroptera",
-            "plecoptera",
-            "trichoptera"))
-
-  metrics.key$pct_hydropsychidae <- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = family,
-  taxon = "hydropsychidae")
+  pct_ept <- non_rare %>%
+     group_by(unique_id) %>%
+      filter(!is.na(order)) %>% 
+      summarise(sum = sum(reporting_value[order %in% c("ephemeroptera", "plecoptera", "trichoptera")]))  
+    metrics.key$pct_ept <- (pct_ept$sum / sample_sum$sample_sum )*100
+  
+  pct_hydropsychidae <- non_rare %>%
+     group_by(unique_id) %>%
+      filter(!is.na(family)) %>% 
+      summarise(sum = sum(reporting_value[family %in% c("hydropsychidae")]))  
+    metrics.key$pct_hydropsychidae <- (pct_hydropsychidae$sum / sample_sum$sample_sum )*100
 
   metrics.key$pct_ept_no_hydro <- metrics.key$pct_ept - metrics.key$pct_hydropsychidae
 
-  metrics.key$pct_euholognatha <- taxa_pct(
+  pct_euholognatha <- non_rare %>%
+     group_by(unique_id) %>%
+      filter(!is.na(suborder)) %>% 
+      summarise(sum = sum(reporting_value[suborder %in% c("euholognatha")]))  
+    metrics.key$pct_euholognatha <- (pct_euholognatha$sum / sample_sum$sample_sum )*100
+  
+  metrics.key$pct_euholognatha2 <- taxa_pct(
   long.df = non_rare,
   unique.id.col = unique_id,
   count.col = reporting_value,
