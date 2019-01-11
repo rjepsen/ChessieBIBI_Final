@@ -226,18 +226,18 @@ div.tocify {
 
 
 <div id="introduction" class="section level3">
-<h3><strong>INTRODUCTION</strong></h3>
+<h3><strong>Introduction</strong></h3>
 <p>This R-script and documentation is intended as a supplement to the <a href="https://www.potomacriver.org/wp-content/uploads/2017/05/ChessieBIBI_Report_Final_5-25-2017.pdf">Smith et al. (2017) final report</a> and <a href="https://www.potomacriver.org/wp-content/uploads/2017/05/ChessieBIBI_Appendix_Final_5-25-2017.pdf">appendices</a>. Use the following scripts to calculate the family-and bioregion- level “Chessie BIBI,” or Chesapeake Basin-wide Index of Biotic Integrity for streams and wadeable rivers in the Chesapeake Bay watershed.</p>
 </div>
 <div id="before-you-get-started" class="section level3">
-<h3><strong>BEFORE YOU GET STARTED</strong></h3>
+<h3><strong>Before You Get Started</strong></h3>
 <p>The initial setup of the data tables, installation of the custom packages, and establishing the ODBC connection to the database will likely require a decent input of time. Once, however, this is accomplished, running the scripts should be a fairly quick process.</p>
-<p>In order to implement the following R scripts, RStudio must be installed. If RStudio is not installed, it can be downloaded for free from <a href="https://www.rstudio.com/" class="uri">https://www.rstudio.com/</a>. This <a href="https://courses.edx.org/courses/UTAustinX/UT.7.01x/3T2014/56c5437b88fa43cf828bff5371c6a924/">webpage</a> details the short installation process. If RStudio is already installed, check the version that is currently being used (Help -&gt; About RStudio). This script was written in Version 1.1.453, so if you have an older version, you may want to upgrade (Help -&gt; Check for Update -&gt; follow instructions). Currently, a Windows machine must be used for data importation.</p>
-<p>Once installed, or if already installed, the scripts are designed to be copied and pasted into RStudio. In order to keep your scripts organized, it is suggested that you comment out a header for each code chunk corresponding to these instructions. For example, for the first step of loading packages, type in <code># 1.1</code> as the header.</p>
+<p>In order to implement the following R scripts, RStudio must be installed. If RStudio is not installed, it can be downloaded for free from <a href="https://www.rstudio.com/" class="uri">https://www.rstudio.com/</a>. This <a href="https://courses.edx.org/courses/UTAustinX/UT.7.01x/3T2014/56c5437b88fa43cf828bff5371c6a924/">webpage</a> details the short installation process. If RStudio is already installed, check the version that is currently being used (Help -&gt; About RStudio). These scripts were written in Version 1.1.453, so if you have an older version, you may want to upgrade (Help -&gt; Check for Update -&gt; follow instructions). Currently, a Windows machine must be used for data importation.</p>
+<p>Once RStudio is installed, or if it is already installed, the scripts are designed to be copied and pasted into the RStudio editor. In order to keep the scripts organized, it is suggested that a header is commented out (<code>#</code>) for each code chunk corresponding to these instructions. For example, for the first step of loading packages, type in <code># 1.1</code> as the header.</p>
 <p>For those who are new to RStudio, each time a data frame is created, it can be viewed by typing <code>View(name)</code> in the console or by clicking its name in the Environment tab on the right.</p>
 </div>
 <div id="data-preparation" class="section level3">
-<h3><strong>1. DATA PREPARATION</strong></h3>
+<h3><strong>1. Data Preparation</strong></h3>
 <p>Most macroinvertebrate assemblage data are formatted in a similar manner; however, rarely can data sets from two separate entities be joined without some manipulation. The data preparation functions outlined below manipulate the data to meet formatting requirements necessary for using several custom functions. For these functions to be useful, you must first prepare the data using the provided functions outlined below.</p>
 <p>The following tables are required for the scripts to work. They can be pulled from an MS Access database or uploaded as individual csv files.</p>
 <ul>
@@ -261,14 +261,12 @@ div.tocify {
 <div id="section" class="section level4">
 <h4><strong>1.1</strong></h4>
 <p>Set the working directory to a location where the scripts can be saved using <code>setwd(&quot;&quot;)</code>. Don’t forget to use a forward slash <code>/</code> instead of a backward slash <code>\</code> in the path name.</p>
-<p>Load the following packages into the environment. The packages must be installed before they can be opened; to check if a package in already installed, refer to the Packages tab on the right. To install a package, either type <code>install.packages(&quot;name&quot;)</code> or use the Install button under the Packages tab. To open the installed libraries, use <code>library(name)</code>.</p>
+<p>Load the following packages into the environment. The packages must be installed before they can be opened; to check if a package in already installed, refer to the Packages tab on the right. To install a package, either type and run <code>install.packages(&quot;name&quot;)</code> or use the Install button under the Packages tab. To open the installed libraries, type and run <code>library(name)</code>.</p>
 <ul>
-<li><p><em>mmir</em> is a custom package developed by Zachary Smith used to calculate taxonomic community metrics. The installation process is currently regrettably tricky and may require a certain degree of “messing with.” It can be downloaded from the <a href="https://github.com/InterstateCommissionPotomacRiverBasin/mmir">ICPRB GitHub account</a> using, in RStudio, <code>devtools::install_github(&quot;InterstateCommissionPotomacRiverBasin/mmir&quot;)</code> or <code>devtools::install_github(&quot;zsmith27/mmir&quot;, ref = &quot;dev&quot;, force = TRUE, quiet = TRUE)</code>. If the first path does not work, please try the second. The second may prompt you to install other packages, which you should do. After installing those additional packages, retry the installation path. After the installation, <em>mmir</em> must be loaded into the environment using <code>library(mmir)</code>. Note: the <em>devtools</em> package must be installed first.</p></li>
+<li><p><em>mmir</em> is a custom package developed by Zachary Smith used to calculate taxonomic community metrics. The installation process is currently regrettably tricky and may require a certain degree of “messing with.” It can be downloaded from the <a href="https://github.com/InterstateCommissionPotomacRiverBasin/mmir">ICPRB GitHub account</a> using, in RStudio, <code>devtools::install_github(&quot;InterstateCommissionPotomacRiverBasin/mmir&quot;)</code> or <code>devtools::install_github(&quot;zsmith27/mmir&quot;, ref = &quot;dev&quot;, force = TRUE, quiet = TRUE)</code>. If the first path does not work, please try the second. The second may prompt you to install other packages, which you should do. After installing those additional packages, retry the installation path. If there is an error involving RTools, you may need to update it. After the installation, <em>mmir</em> must be loaded into the environment using <code>library(mmir)</code>. Note: the <em>devtools</em> package must be installed first.</p></li>
 <li><p><em>bibi2.0</em> is a custom package developed by Zachary Smith used to automate the data preparation process. It is downloaded in the same manner as <em>mmir</em>. Use <code>devtools::install_github(&quot;InterstateCommissionPotomacRiverBasin/bibi2.0&quot;)</code>. Load using <code>library(bibi2.0)</code>.</p></li>
 </ul>
-<pre class="r"><code>#devtools::install_github(&quot;InterstateCommissionPotomacRiverBasin/BIBI&quot;)
-#library(BIBI)
-library(tidyverse)
+<pre class="r"><code>library(tidyverse)
 library(stringr)
 library(lubridate)
 library(devtools)
@@ -407,7 +405,9 @@ RODBC::odbcCloseAll()</code></pre>
 </div>
 <div id="section-6" class="section level4">
 <h4><strong>1.7</strong></h4>
-<p>Probabilistic rarefaction as described in Appendix D.</p>
+<p>Perform probabilistic rarefaction as described on Final Report page 7 and Appendix D.</p>
+<p>The Chessie BIBI uses rarefied counts of 100 because because that was the lowest common denominator among all the agencies and programs represented in the Chessie BIBI database. The Chessie BIBI was designed using rarefied counts of 100; therefore, changing the sample size will SOMETHING. If, however, you would like to change the rarefied counts to a value other than 100, substitute your number for 100 in the 4<sup>th</sup> line of code below: <code>mutate(ratio = YOUR_NUMBER*(reporting_value/sample_sum)) %&gt;%</code>.</p>
+<p><strong>WARNING:</strong> every time you rerun the rarefaction scripts below, the resulting data frame will have different rarefied counts for rare species. To preserve the data frame generated at the end of the rarefaction scripts, <strong>taxa.df</strong>, export it as a CSV file and import it prior to the metric calculation steps if you do not plan on running all of the code in one sitting.</p>
 <pre class="r"><code>taxa2.df &lt;- taxa.df %&gt;%                                                                      
   group_by(unique_id) %&gt;%                                                                               
   mutate(sample_sum = sum(reporting_value)) %&gt;%                                                         
@@ -431,17 +431,20 @@ RODBC::odbcCloseAll()</code></pre>
    mutate(rare_needed = ifelse(rare_needed &gt; total_rare, total_rare, rare_needed)) %&gt;%                   
    mutate(rare_needed = ifelse(rare_needed &lt; 1, 0, rare_needed)) %&gt;%                                   
    mutate(rare_2b_removed = (total_rare - rare_needed)+1) %&gt;%                                          
-   slice(rare_2b_removed:n()) %&gt;%                                                                       
+   slice(median(rare_2b_removed):n()) %&gt;%                                                                       
    mutate(rare_count =(ifelse(ratio_int == 0, 1, ratio_int))) %&gt;%                                       
    mutate(rare_count_total = sum(rare_count)) %&gt;%                                                        
    ungroup()
    
  taxa.df &lt;- taxa_join %&gt;%                                                                               
   select(unique_id, icprb_bioregion_id, rare_count, final_id, phylum, subphylum, class, subclass, order, suborder, family, subfamily, tribe, genus, habit, ffg, bibi_tv)</code></pre>
+<p><strong>Optional:</strong><br />
+If you would like to preserve the rarefied data frame created above, export it as a CSV.</p>
+<pre class="r"><code>write.csv(taxa.df, file= &quot;name_of_file.csv&quot;)</code></pre>
 </div>
 </div>
-<div id="calculate-the-biological-metrics" class="section level3">
-<h3><strong>2. CALCULATE THE BIOLOGICAL METRICS</strong></h3>
+<div id="calculating-biological-metrics" class="section level3">
+<h3><strong>2. Calculating Biological Metrics</strong></h3>
 <p>Now that the data are in the proper format and the samples have been rarefied, the biological metrics can be calcualted using <em>mmir</em>. To streamline this process, all of the metrics are computed for each unique_id. Later on, metrics specific to each bioregion will be selected out.</p>
 <p>The first step is to generate a new data frame for the non-rarefied and rarefied data, both of which are needed because not all metrics calculations require rarefied data.<br />
 Next, a data frame, <strong>metrics.key</strong>, will be generated. <strong>metrics.key</strong> initially only contains the following columns: unique_id, icprb_bioregion_id, event_latitude, event_longitude, and huc_12, but each calculated metric is appended using <code>metrics.key$new_column &lt;-</code>.</p>
@@ -450,6 +453,7 @@ non_rare &lt;- prep.df2 %&gt;%
    arrange(unique_id) %&gt;%
    ungroup()
 
+# If you had exported the rarefied data as a CSV above, read it in at this time using: read.csv(&quot;name_of_file.csv&quot;)
 rare &lt;- taxa.df %&gt;%
    arrange(unique_id) %&gt;%
    ungroup()
@@ -921,7 +925,7 @@ rare &lt;- taxa.df %&gt;%
 <pre class="r"><code>write.csv(metrics.key, file= &quot;name_of_file.csv&quot;)</code></pre>
 </div>
 <div id="metric-scoring" class="section level3">
-<h3><strong>3. METRIC SCORING</strong></h3>
+<h3><strong>3. Metric Scoring</strong></h3>
 <div id="section-7" class="section level4">
 <h4><strong>3.1</strong></h4>
 <p>Subset <strong>metrics.key</strong> by bioregion, creating a new data frame for each of the twelve bioregions.</p>
@@ -2055,7 +2059,7 @@ PIED_score$score_rich_trichoptera &lt;-
 </div>
 </div>
 <div id="calculating-the-chessie-bibi" class="section level3">
-<h3><strong>4. CALCULATING THE CHESSIE BIBI</strong></h3>
+<h3><strong>4. Calculating the CHESSIE BIBI</strong></h3>
 <p>Average the metric score columns for each unique_id with <code>rowMeans</code> and <code>[row,column]</code>. In <code>[row,column]</code>, ‘row’ is left blank, indicating that all rows are to be used, and ‘column’ has the range of column numbers containing scores. If you added or removed columns, you will need to adjust the column ranges.</p>
 <p><code>na.rm = T</code> excludes any cells that contain an NA from the calculation.</p>
 <p>The resulting mean value is the Chessie BIBI. It is assigned using <code>bioregion_score$chessie_bibi &lt;-</code> and outputted in a column called <em>chessie_bibi</em>.</p>
@@ -2072,8 +2076,8 @@ SGV_score$chessie_bibi  &lt;- rowMeans(SGV_score[ ,27:47], na.rm = T)
 LNP_score$chessie_bibi  &lt;- rowMeans(LNP_score[ ,15:23], na.rm = T)
 PIED_score$chessie_bibi &lt;- rowMeans(PIED_score[ ,14:21], na.rm = T) </code></pre>
 </div>
-<div id="assign-narrative-ratings" class="section level3">
-<h3><strong>5. ASSIGN NARRATIVE RATINGS</strong></h3>
+<div id="assigning-narrative-ratings" class="section level3">
+<h3><strong>5. Assigning Narrative Ratings</strong></h3>
 <p>Use Table 5, Final Report Page 27 to access the values used to assign narrative ratings of Excellent, Very Good, Fair, Poor, or Very Poor to the Chessie BIBI value. The values are different in the various bioregions.</p>
 <pre class="r"><code>NAPU_score$rating &lt;-
   case_when(
@@ -2184,7 +2188,7 @@ PIED_score$rating &lt;-
     TRUE ~ &quot;ERROR&quot;)</code></pre>
 </div>
 <div id="visualization" class="section level3">
-<h3><strong>6. VISUALIZATION</strong></h3>
+<h3><strong>6. Visualization</strong></h3>
 <div id="section-10" class="section level4">
 <h4><strong>6.1</strong></h4>
 <p>Select out the <em>unique_id</em>, <em>icprb_bioregion_id</em>, <em>chessie_bibi</em>, and <em>rating</em> columns from each bioregion. Merge these data into one large data frame, <strong>bibi_ratings_combined</strong>, using a series of <code>rbind()</code> calls. <code>rbind()</code> only accepts two data frames, which is why it needs to be repeated several times.</p>
