@@ -252,13 +252,24 @@ rare <- taxa.df %>%
   arrange(unique_id) 
 
 # Calculate the metrics. Use long.df to specify which data frame to use (non-rarefied or rarefied. First, the non-rarefied data will be used.)
-  metrics.key$aspt_mod <- taxa_tol_index( 
+ sample_sum <- non_rare %>%
+   group_by(unique_id) %>%
+   mutate(sample_sum = sum(reporting_value)) %>% 
+   unique()
+ 
+ metrics.key$aspt_mod <- taxa_tol_index( 
   long.df = non_rare,
   unique.id.col = unique_id,
   count.col = reporting_value,
   tol.col = aspt)
   
-  metrics.key$pct_gastro_oligo <- taxa_pct(
+  pct_gastro_oligo <- non_rare %>%
+   group_by(unique_id) %>%
+     #filter(!is.na(class)) %>% 
+      tally(class %in% c("gastropoda", "oligochatea"))
+  metrics.key$pct_gastro_oligo <- pct_gastro_oligo$n / sample_sum$sample_sum 
+  
+  metrics.key$pct_gastro_oligo2 <- taxa_pct(
   long.df = non_rare,
   unique.id.col = unique_id,
   count.col = reporting_value,
@@ -590,6 +601,11 @@ rare <- taxa.df %>%
       tally(order %in% c("ephemeroptera", "plecoptera", "trichoptera") & bibi_tv %in% c("0","1","2","3","4","5","6"))
     metrics.key$pct_ept_rich_no_tol <- (ept_no_tol_count$n/taxa_count$n)*100
   
+  shannon <- rare %>%
+    group_by(unique_id) %>%
+    mutate(shannon$shannon <- diversity(shannon$rare_count, index = "shannon"))
+  metrics.key$pielou <- shannon$shannon / ln()
+      
   metrics.key$pielou <- taxa_div(
   long.df = rare,
   unique.id.col = unique_id,
@@ -597,14 +613,21 @@ rare <- taxa.df %>%
   high.taxa.col = family,
   job = "pielou")
   
-  metrics.key$rich_burrow <- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = habit,
-  high.taxa.col = family,
-  taxon = "burrow")  
-
-  metrics.key$rich_climb <- taxa_rich(
+  rich_burrow <- rare %>%
+    group_by(unique_id) %>%
+    filter(!is.na(habit)) %>% 
+    tally(habit %in% c("burrow"))
+  metrics.key$rich_burrow <- rich_burrow$n
+  
+  rich_climb <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(habit)) %>%
+    filter(habit %in% c("climb")) %>%
+    distinct(family, .keep_all = TRUE) %>% 
+    tally(habit %in% c("climb"))
+  metrics.key$rich_climb <- rich_climb$n
+  
+metrics.key$rich_climb2 <- taxa_rich(
   long.df = rare,
   unique.id.col = unique_id,
   low.taxa.col = habit,
