@@ -578,7 +578,7 @@ sample_sum_rare <- rare %>%
     mutate(shannon$shannon <- diversity(shannon$rare_count, index = "shannon"))
   metrics.key$pielou <- shannon$shannon / ln()
       
-  metrics.key$pielou <- taxa_div(
+  metrics.key$pielou2 <- taxa_div(
   long.df = rare,
   unique.id.col = unique_id,
   count.col = rare_count, 
@@ -618,110 +618,147 @@ sample_sum_rare <- rare %>%
     filter(ffg %in% c("filter")) %>%
     summarise(rich_collect_filter = n_distinct(family)) %>%
     select(unique_id, rich_collect_filter)
-  rich_collect_gather <- rare  %>%
+    rich_collect_gather <- rare  %>%
+      group_by(unique_id) %>%
+      filter(!is.na(ffg)) %>%
+      filter(ffg %in% c("gather")) %>%
+      summarise(rich_collect_gather = n_distinct(family)) %>%
+      select(unique_id, rich_collect_gather)
+      rich_collect <- merge(rich_collect_filter, rich_collect_gather, by = "unique_id", all=TRUE)
+        rich_collect[is.na(rich_collect)] <- 0  
+        rich_collect$rich_collect <- rich_collect$rich_collect_filter + rich_collect$rich_collect_gather
+        rich_collect$rich_collect_gather <- NULL
+        rich_collect$rich_collect_filter <- NULL
+     metrics.key <- merge(metrics.key, rich_collect, by = "unique_id", all=TRUE)
+   
+ rich_ephemeroptera <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(order)) %>%
+    filter(order %in% c("ephemeroptera")) %>%
+    summarise(rich_ephemeroptera = n_distinct(family)) %>%
+    select(unique_id, rich_ephemeroptera) 
+    metrics.key <- merge(metrics.key, rich_ephemeroptera, by = "unique_id", all=TRUE)
+    metrics.key[is.na(metrics.key)] <- 0
+     
+  rich_ept <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(order)) %>%
+    filter(order %in% c("ephemeroptera", "plecoptera", "trichoptera")) %>%
+    summarise(rich_ept = n_distinct(family)) %>%
+    select(unique_id, rich_ept) 
+    metrics.key <- merge(metrics.key, rich_ept, by = "unique_id", all=TRUE)
+    metrics.key[is.na(metrics.key)] <- 0   
+ 
+  rich_filter <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(ffg)) %>%
+    filter(ffg %in% c("filter")) %>%
+    summarise(rich_filter = n_distinct(family)) %>%
+    select(unique_id, rich_filter) 
+    metrics.key <- merge(metrics.key, rich_filter, by = "unique_id", all=TRUE)
+    metrics.key[is.na(metrics.key)] <- 0   
+
+  rich_gather <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(ffg)) %>%
     filter(ffg %in% c("gather")) %>%
-    summarise(rich_collect_gather = n_distinct(family)) %>%
-    select(unique_id, rich_collect_gather)
-  rich_collect <- merge(rich_collect_filter, rich_collect_gather, by= "unique_id", all=TRUE)
-    rich_collect$rich_collect <- rich_collect$rich_collect_filter + rich_collect$rich_collect_gather
-    rich_collect$rich_collect[is.na(rich_collect$rich_collect)] <- 0
-    rich_collect$rich_collect_gather <- NULL
-    rich_collect$rich_collect_filter <- NULL
-    metrics.key <- merge(metrics.key, rich_collect, by="unique_id", all=TRUE)
-   
-    
-metrics.key$rich_collect2 <- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = ffg,
-  high.taxa.col = family,
-  taxon = c("filter", "gather"))
+    summarise(rich_gather = n_distinct(family)) %>%
+    select(unique_id, rich_gather) 
+    metrics.key <- merge(metrics.key, rich_gather, by = "unique_id", all=TRUE)
+    metrics.key[is.na(metrics.key)] <- 0   
 
-  metrics.key$rich_ephemeroptera <- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = order,
-  high.taxa.col = family,
-  taxon = "ephemeroptera")
+ rich_intol <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(bibi_tv)) %>%
+    filter(bibi_tv %in% c("0", "1", "2", "3")) %>%
+    summarise(rich_intol = n_distinct(family)) %>%
+    select(unique_id, rich_intol) 
+    metrics.key <- merge(metrics.key, rich_intol, by = "unique_id", all=TRUE)
+    metrics.key[is.na(metrics.key)] <- 0   
 
-  metrics.key$rich_ept <- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = order,
-  high.taxa.col = family, 
-  taxon = c("ephemeroptera", "plecoptera", "trichoptera"))
-
-  metrics.key$rich_filter <- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = ffg,
-  high.taxa.col = family,
-  taxon = "filter")
-
-  metrics.key$rich_gather <- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = ffg,
-  high.taxa.col = family,
-  taxon = "gather") 
-
-  metrics.key$rich_intol <- taxa_rich(
+  metrics.key$rich_intol2 <- taxa_rich(
   long.df = rare,
   unique.id.col = unique_id,
   low.taxa.col = bibi_tv,
   high.taxa.col = family,
   taxon = 0:3)
 
-  metrics.key$rich_modtol <- taxa_rich(
+ rich_modtol <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(bibi_tv)) %>%
+    filter(bibi_tv %in% c("4", "5", "6")) %>%
+    summarise(rich_modtol = n_distinct(family)) %>%
+    select(unique_id, rich_modtol) 
+    metrics.key <- merge(metrics.key, rich_modtol, by = "unique_id", all=TRUE)
+    metrics.key[is.na(metrics.key)] <- 0   
+  
+ metrics.key$rich_modtol2 <- taxa_rich(
   long.df = rare,
   unique.id.col = unique_id,
   low.taxa.col = bibi_tv,
   high.taxa.col = family,
   taxon = 4:6)
 
-  metrics.key$rich_plecoptera <- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = order,
-  high.taxa.col = family,
-  taxon = "plecoptera")
+  rich_plecoptera <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(order)) %>%
+    filter(order %in% c("plecoptera")) %>%
+    summarise(rich_plecoptera = n_distinct(family)) %>%
+    select(unique_id, rich_plecoptera) 
+    metrics.key <- merge(metrics.key, rich_plecoptera, by = "unique_id", all=TRUE)
+    metrics.key[is.na(metrics.key)] <- 0  
 
-  metrics.key$rich_predator <- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = ffg,
-  high.taxa.col = family,
-  taxon = "predator")  
+  rich_predator <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(ffg)) %>%
+    filter(ffg %in% c("predator")) %>%
+    summarise(rich_predator = n_distinct(family)) %>%
+    select(unique_id, rich_predator) 
+    metrics.key <- merge(metrics.key, rich_predator, by = "unique_id", all=TRUE)
+    metrics.key[is.na(metrics.key)] <- 0 
+ 
+  rich_shred <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(ffg)) %>%
+    filter(ffg %in% c("shred")) %>%
+    summarise(rich_shred = n_distinct(family)) %>%
+    select(unique_id, rich_shred) 
+    metrics.key <- merge(metrics.key, rich_shred, by = "unique_id", all=TRUE)
+    metrics.key[is.na(metrics.key)] <- 0 
 
-  metrics.key$rich_shred <- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = ffg,
-  high.taxa.col = family,
-  taxon = "shred")   
-
-  metrics.key$rich_sprawl <- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = habit,
-  high.taxa.col = family,
-  taxon = "sprawl")  
-
-  metrics.key$rich_tol <- taxa_rich(
+ rich_sprawl <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(habit)) %>%
+    filter(habit %in% c("sprawl")) %>%
+    summarise(rich_sprawl = n_distinct(family)) %>%
+    select(unique_id, rich_sprawl) 
+    metrics.key <- merge(metrics.key, rich_sprawl, by = "unique_id", all=TRUE)
+    metrics.key[is.na(metrics.key)] <- 0 
+    
+  rich_tol <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(bibi_tv)) %>%
+    filter(bibi_tv %in% c("7", "8", "9", "10")) %>%
+    summarise(rich_tol = n_distinct(family)) %>%
+    select(unique_id, rich_tol) 
+    metrics.key <- merge(metrics.key, rich_tol, by = "unique_id", all=TRUE)
+    metrics.key[is.na(metrics.key)] <- 0 
+    
+  metrics.key$rich_tol2 <- taxa_rich(
   long.df = rare,
   unique.id.col = unique_id,
   low.taxa.col = bibi_tv,
   high.taxa.col = family,
   taxon = 7:10)
 
-  metrics.key$rich_trichoptera <- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = order,
-  high.taxa.col = family,
-  taxon = "trichoptera")
+  rich_trichoptera <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(order)) %>%
+    filter(order %in% c("trichoptera")) %>%
+    summarise(rich_trichoptera = n_distinct(family)) %>%
+    select(unique_id, rich_trichoptera) 
+    metrics.key <- merge(metrics.key, rich_trichoptera, by = "unique_id", all=TRUE)
+    metrics.key[is.na(metrics.key)] <- 0 
 ```
 To download metrics.key as a csv, run the following script. The csv will be stored in the working directory that you have set up.
 ```{r eval=FALSE}
