@@ -546,11 +546,12 @@ family_richness <- rare %>%
   group_by(unique_id) %>%
   summarise(family_richness = n_distinct(family)) 
 ## MARGALEFS
-sample_sum_rare <- rare %>%
+margalefs <- rare %>%
    group_by(unique_id) %>%
-   summarise(sample_sum = sum(rare_count)) 
+   summarise(sample_sum = sum(rare_count))
+metrics.key$pielou <- ((family_richness$family_richness - 1)/(log(margalefs$sample_sum))) # NOT APPEARING IN METRIC KEY WHY
    
-  metrics.key$margalefs = taxa_div(
+  metrics.key$margalefs2 = taxa_div(
   long.df = rare,
   unique.id.col = unique_id,
   count.col = rare_count, 
@@ -573,10 +574,11 @@ sample_sum_rare <- rare %>%
       tally(order %in% c("ephemeroptera", "plecoptera", "trichoptera") & bibi_tv %in% c("0","1","2","3","4","5","6"))
     metrics.key$pct_ept_rich_no_tol <- (ept_no_tol_count$n/taxa_count$n)*100
 ##  PIELOU
+  library(benthos)
   shannon <- rare %>%
     group_by(unique_id) %>%
-    mutate(shannon$shannon <- diversity(shannon$rare_count, index = "shannon"))
-  metrics.key$pielou <- shannon$shannon / ln()
+    summarise(shannon = shannon(taxon = family, count = rare_count))
+  metrics.key$pielou <- (shannon$shannon / log(family_richness$family_richness))
       
   metrics.key$pielou2 <- taxa_div(
   long.df = rare,
