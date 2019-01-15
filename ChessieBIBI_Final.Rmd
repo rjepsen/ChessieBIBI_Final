@@ -230,7 +230,7 @@ If you would like to preserve the rarefied data frame created above, export it a
 write.csv(taxa.df, file= "name_of_file.csv")
 ```
 ###**2. Calculating Biological Metrics**  
-Now that the data are in the proper format and the samples have been rarefied, the biological metrics can be calcualted using *mmir*. To streamline this process, all of the metrics are computed for each unique_id. Later on, metrics specific to each bioregion will be selected out.  
+Now that the data are in the proper format and the samples have been rarefied, the biological metrics can be calcualted. To streamline this process, all of the metrics are computed for each unique sampling event (unique_id). Later on, metrics specific to each bioregion will be selected.  
 
 The first step is to generate a new data frame for the non-rarefied and rarefied data, both of which are needed because not all metrics calculations require rarefied data.     
 Next, a data frame, **metrics.key**, will be generated. **metrics.key** initially only contains the following columns: unique_id, icprb_bioregion_id, event_latitude, event_longitude, and huc_12, but each calculated metric is appended using `metrics.key$new_column <-`.
@@ -562,12 +562,16 @@ metrics.key$pielou <- ((family_richness$family_richness - 1)/(log(margalefs$samp
     group_by(unique_id) %>%
      filter(!is.na(bibi_tv)) %>%
       count(unique_id) 
-    ept_count <- rare %>%
-      group_by(unique_id) %>%
-       filter(!is.na(bibi_tv)) %>% 
-        tally(order %in% c("ephemeroptera", "plecoptera", "trichoptera"))
-    metrics.key$pct_ept_rich <- (ept_count$n / taxa_count$n)*100
-  
+   pct_ept_rich <- rare %>%
+    group_by(unique_id) %>%
+    filter(!is.na(order)) %>%
+    filter(order %in% c("ephemeroptera", "plecoptera", "trichoptera")) %>%
+    summarise(rich_ept = n_distinct(family))
+    pct_ept_rich2 <- merge(pct_ept_rich, family_richness, be= "unique_id", all=TRUE)
+    pct_ept_rich2[is.na(pct_ept_rich2)] <- 0
+    metrics.key$pct_ept_rich2 <- (pct_ept_rich2$rich_ept / pct_ept_rich2$family_richness)*100
+    
+    
   ept_no_tol_count <- rare %>%
     group_by(unique_id) %>%
      filter(!is.na(bibi_tv)) %>% 
@@ -620,13 +624,13 @@ metrics.key$pielou <- ((family_richness$family_richness - 1)/(log(margalefs$samp
     filter(ffg %in% c("filter")) %>%
     summarise(rich_collect_filter = n_distinct(family)) %>%
     select(unique_id, rich_collect_filter)
-    rich_collect_gather <- rare  %>%
+     rich_collect_gather <- rare  %>%
       group_by(unique_id) %>%
       filter(!is.na(ffg)) %>%
       filter(ffg %in% c("gather")) %>%
       summarise(rich_collect_gather = n_distinct(family)) %>%
       select(unique_id, rich_collect_gather)
-      rich_collect <- merge(rich_collect_filter, rich_collect_gather, by = "unique_id", all=TRUE)
+       rich_collect <- merge(rich_collect_filter, rich_collect_gather, by = "unique_id", all=TRUE)
         rich_collect[is.na(rich_collect)] <- 0  
         rich_collect$rich_collect <- rich_collect$rich_collect_filter + rich_collect$rich_collect_gather
         rich_collect$rich_collect_gather <- NULL
@@ -669,38 +673,70 @@ metrics.key$pielou <- ((family_richness$family_richness - 1)/(log(margalefs$samp
     metrics.key <- merge(metrics.key, rich_gather, by = "unique_id", all=TRUE)
     metrics.key[is.na(metrics.key)] <- 0   
 
- rich_intol <- rare  %>%
+ rich_intol0 <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(bibi_tv)) %>%
-    filter(bibi_tv %in% c("0", "1", "2", "3")) %>%
-    summarise(rich_intol = n_distinct(family)) %>%
-    select(unique_id, rich_intol) 
-    metrics.key <- merge(metrics.key, rich_intol, by = "unique_id", all=TRUE)
-    metrics.key[is.na(metrics.key)] <- 0   
-
-  metrics.key$rich_intol2 <- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = bibi_tv,
-  high.taxa.col = family,
-  taxon = 0:3)
-
- rich_modtol <- rare  %>%
+    filter(bibi_tv %in% c("0")) %>%
+    summarise(rich_intol0 = n_distinct(family)) %>%
+    select(unique_id, rich_intol0)
+  rich_intol1 <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(bibi_tv)) %>%
-    filter(bibi_tv %in% c("4", "5", "6")) %>%
-    summarise(rich_modtol = n_distinct(family)) %>%
-    select(unique_id, rich_modtol) 
-    metrics.key <- merge(metrics.key, rich_modtol, by = "unique_id", all=TRUE)
-    metrics.key[is.na(metrics.key)] <- 0   
+    filter(bibi_tv %in% c("1")) %>%
+    summarise(rich_intol1 = n_distinct(family)) %>%
+    select(unique_id, rich_intol1)
+  rich_intol2 <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(bibi_tv)) %>%
+    filter(bibi_tv %in% c("2")) %>%
+    summarise(rich_intol2 = n_distinct(family)) %>%
+    select(unique_id, rich_intol2)
+  rich_intol3 <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(bibi_tv)) %>%
+    filter(bibi_tv %in% c("3")) %>%
+    summarise(rich_intol3 = n_distinct(family)) %>%
+    select(unique_id, rich_intol3)
+  rich_intol01 <- merge(rich_intol0, rich_intol1, by= "unique_id", all=TRUE)
+  rich_intol01[is.na(rich_intol01)] <- 0
+  rich_intol012 <- merge(rich_intol01, rich_intol2, by= "unique_id", all=TRUE)
+  rich_intol012[is.na(rich_intol012)] <- 0
+  rich_intol0123 <- merge(rich_intol012, rich_intol3, by= "unique_id", all=TRUE)
+  rich_intol0123[is.na(rich_intol0123)] <- 0
+  rich_intol0123$rich_intol <- rich_intol0123$rich_intol0 + rich_intol0123$rich_intol1 + rich_intol0123$rich_intol2 + rich_intol0123$rich_intol3
+  rich_intol0123 <- rich_intol0123 %>%
+    select(unique_id, rich_intol)
+  metrics.key <- merge(metrics.key, rich_intol0123, by = "unique_id", all=TRUE)
+  metrics.key[is.na(metrics.key)] <- 0   
+
+rich_modtol4 <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(bibi_tv)) %>%
+    filter(bibi_tv %in% c("4")) %>%
+    summarise(rich_modtol4 = n_distinct(family)) %>%
+    select(unique_id, rich_modtol4)
+  rich_modtol5 <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(bibi_tv)) %>%
+    filter(bibi_tv %in% c("5")) %>%
+    summarise(rich_modtol5 = n_distinct(family)) %>%
+    select(unique_id, rich_modtol5)
+  rich_modtol6 <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(bibi_tv)) %>%
+    filter(bibi_tv %in% c("6")) %>%
+    summarise(rich_modtol6 = n_distinct(family)) %>%
+    select(unique_id, rich_modtol6)
+  rich_modtol45 <- merge(rich_modtol4, rich_modtol5, by= "unique_id", all=TRUE)
+  rich_modtol45[is.na(rich_modtol45)] <- 0
+  rich_modtol456 <- merge(rich_modtol45, rich_modtol6, by= "unique_id", all=TRUE)
+  rich_modtol456[is.na(rich_modtol456)] <- 0
+  rich_modtol456$rich_modtol <- rich_modtol456$rich_modtol4 + rich_modtol456$rich_modtol5 + rich_modtol456$rich_modtol6
+  rich_modtol456 <- rich_modtol456 %>%
+    select(unique_id, rich_modtol)
+  metrics.key <- merge(metrics.key, rich_modtol456, by = "unique_id", all=TRUE)
+  metrics.key[is.na(metrics.key)] <- 0  
   
- metrics.key$rich_modtol2 <- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = bibi_tv,
-  high.taxa.col = family,
-  taxon = 4:6)
-
   rich_plecoptera <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(order)) %>%
@@ -737,22 +773,42 @@ metrics.key$pielou <- ((family_richness$family_richness - 1)/(log(margalefs$samp
     metrics.key <- merge(metrics.key, rich_sprawl, by = "unique_id", all=TRUE)
     metrics.key[is.na(metrics.key)] <- 0 
     
-  rich_tol <- rare  %>%
+  rich_tol7 <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(bibi_tv)) %>%
-    filter(bibi_tv %in% c("7", "8", "9", "10")) %>%
-    summarise(rich_tol = n_distinct(family)) %>%
-    select(unique_id, rich_tol) 
-    metrics.key <- merge(metrics.key, rich_tol, by = "unique_id", all=TRUE)
-    metrics.key[is.na(metrics.key)] <- 0 
+    filter(bibi_tv %in% c("7")) %>%
+    summarise(rich_tol7 = n_distinct(family)) %>%
+    select(unique_id, rich_tol7)
+  rich_tol8 <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(bibi_tv)) %>%
+    filter(bibi_tv %in% c("8")) %>%
+    summarise(rich_tol8 = n_distinct(family)) %>%
+    select(unique_id, rich_tol8)
+  rich_tol9 <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(bibi_tv)) %>%
+    filter(bibi_tv %in% c("9")) %>%
+    summarise(rich_tol9 = n_distinct(family)) %>%
+    select(unique_id, rich_tol9)
+  rich_tol10 <- rare  %>%
+    group_by(unique_id) %>%
+    filter(!is.na(bibi_tv)) %>%
+    filter(bibi_tv %in% c("10")) %>%
+    summarise(rich_tol10 = n_distinct(family)) %>%
+    select(unique_id, rich_tol10)
+  rich_tol78 <- merge(rich_tol7, rich_tol8, by= "unique_id", all=TRUE)
+  rich_tol78[is.na(rich_tol78)] <- 0
+  rich_tol789 <- merge(rich_tol78, rich_tol9, by= "unique_id", all=TRUE)
+  rich_tol789[is.na(rich_tol789)] <- 0
+  rich_tol78910 <- merge(rich_tol789, rich_tol10, by= "unique_id", all=TRUE)
+  rich_tol78910[is.na(rich_tol78910)] <- 0
+  rich_tol78910$rich_tol <- rich_tol78910$rich_tol7 + rich_tol78910$rich_tol8 + rich_tol78910$rich_tol9 + rich_tol78910$rich_tol10
+  rich_tol78910 <- rich_tol78910 %>%
+    select(unique_id, rich_tol)
+  metrics.key <- merge(metrics.key, rich_tol78910, by = "unique_id", all=TRUE)
+  metrics.key[is.na(metrics.key)] <- 0   
     
-  metrics.key$rich_tol2 <- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = bibi_tv,
-  high.taxa.col = family,
-  taxon = 7:10)
-
   rich_trichoptera <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(order)) %>%
