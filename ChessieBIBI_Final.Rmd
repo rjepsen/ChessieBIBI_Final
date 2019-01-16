@@ -21,7 +21,7 @@ For those who are new to RStudio, each time a data frame is created, it can be v
 ###**1. Data Preparation**   
 Most macroinvertebrate assemblage data are formatted in a similar manner; however, rarely can data sets from two separate entities be joined without some manipulation. The data preparation functions outlined below manipulate the data to meet formatting requirements necessary for using several custom functions. For these functions to be useful, you must first prepare the data using the provided functions outlined below.  
 
-The following tables are required for the scripts to work. They can be pulled from an MS Access database or uploaded as individual csv files.   
+The following tables are required for the scripts to work, and they will be pulled from an MS Access database.   
 
 * TAB_EVENT  
 * TAB_STATIONS     
@@ -39,15 +39,12 @@ Set the working directory to a location where the scripts can be saved using `se
 
 Load the following packages into the environment. The packages must be installed before they can be opened; to check if a package in already installed, refer to the Packages tab on the right. To install a package, either type and run `install.packages("name")` or use the Install button under the Packages tab. To open the installed libraries, type and run `library(name)`.  
 
-* *mmir* is a custom package developed by Zachary Smith used to calculate taxonomic community metrics. The installation process is currently regrettably tricky and may require a certain degree of "messing with." It can be downloaded from the [ICPRB GitHub account](https://github.com/InterstateCommissionPotomacRiverBasin/mmir) using, in RStudio, `devtools::install_github("InterstateCommissionPotomacRiverBasin/mmir")` or `devtools::install_github("zsmith27/mmir", ref = "dev", force = TRUE, quiet = TRUE)`. If the first path does not work, please try the second. The second may prompt you to install other packages, which you should do. After installing those additional packages, retry the installation path. If there is an error involving RTools, you may need to update it. After the installation, *mmir* must be loaded into the environment using `library(mmir)`. Note: the *devtools* package must be installed first. 
-
-* *bibi2.0* is a custom package developed by Zachary Smith used to automate the data preparation process. It is downloaded in the same manner as *mmir*. Use `devtools::install_github("InterstateCommissionPotomacRiverBasin/bibi2.0")`. Load using `library(bibi2.0)`.
+* *bibi2.0* is a custom package developed by Zachary Smith used to automate the data preparation process. To download this package, first install the `devtools` package and run the following script: `devtools::install_github("InterstateCommissionPotomacRiverBasin/bibi2.0")`. Load using `library(bibi2.0)`.
 ```{r message=FALSE}
 library(tidyverse)
 library(stringr)
 library(lubridate)
 library(devtools)
-library(mmir) 
 library(bibi2.0) 
 library(odbc) # For Windows 64-bit; see 1.2
 library(RODBC) # For Windows 32-bit; see 1.2
@@ -68,7 +65,7 @@ If the Windows operating system and MS Office are both either 64-bit or 32-bit, 
 3. You can now go back to the ODBC Data Source Administrator and proceed with setting up the ODBC connection.  
 4. The last step is to change RStudio to the 32-bit version. Tools > Global Options > General > change the version to 32-bit.  
 
-Once the ODBC connection is established, use the *mmir* function, `clean_df()`, is implemented, setting all text to lowercase and removing unwanted spaces in the data.  
+Once the ODBC connection is established, use the *bibi2.0* function, `clean_data_frame()`, is implemented, setting all text to lowercase and removing unwanted spaces in the data.  
 
 **NOTE** You will probably not want to name your database CBIBI_2017, as the database used for these instructions was. Therefore, when you have established the ODBC connections with your own database, change the code below from `channel <- dbConnect(odbc(), "CBIBI_2017")` to `channel <- dbConnect(odbc(), "your_database_name")`.  
 
@@ -87,7 +84,7 @@ tab.vec <- c("TAB_EVENT",
 
  tab.list <- purrr::map(tab.vec, function(tab.i) {
   dbReadTable(channel, tab.i, stringsAsFactors = FALSE) %>% 
-    clean_df()
+    clean_data_frame()
 }) %>% 
   set_names(tolower(tab.vec))
 
@@ -108,7 +105,7 @@ tab.vec <- c("TAB_EVENT",
 
  tab.list <- purrr::map(tab.vec, function(tab.i) {
   RODBC::sqlFetch(channel, tab.i, stringsAsFactors = FALSE) %>% 
-    clean_df()
+    clean_data_frame()
 }) %>% 
   set_names(tolower(tab.vec))
 
@@ -171,8 +168,28 @@ prep.df2 <-
 )
 ```
 ####**1.6**
-Perform general cleaning of the data frame, and `select` only the indicated columns. The resulting data frame is **taxa.df**, which will be the input to the rarefaction step.
+Perform general cleaning of the data frame, and use `select` to retain only the indicated columns. The resulting data frame is **taxa.df**, which will be the input to the rarefaction step.
 ```{r cache=TRUE}
+fill_taxa <- function(long.df, final.id.col, ...) {
+  rank.quos <- rlang::quos(...)
+  final.id.col <- rlang::enquo(final.id.col)
+
+  rank.vec <- long.df %>%
+    select(!!!rank.quos) %>%
+    names()
+
+  final.df <- long.df %>%
+    tidyr::gather(rank, taxon, !!!rank.quos) %>%
+    dplyr::mutate(rank = factor(rank, levels = rank.vec),
+                  taxon = if_else(taxon == "", as.character(NA), taxon)) %>%
+    dplyr::group_by(!!final.id.col) %>%
+    tidyr::fill(taxon)  %>%
+    dplyr::ungroup() %>%
+    tidyr::spread(rank, taxon)
+
+  return(final.df)
+  }
+
 taxa.df <- prep.df2 %>% 
   ungroup() %>% 
   select(unique_id, icprb_bioregion_id, reporting_value, final_id, phylum, subphylum, class, subclass, 
@@ -180,7 +197,7 @@ taxa.df <- prep.df2 %>%
   group_by_at(vars(-reporting_value)) %>% 
   summarize(reporting_value = sum(reporting_value)) %>% 
   ungroup() %>% 
-  fill_taxa(final_id, phylum:genus) %>% 
+  fill_taxa(. , final_id, phylum:genus) %>%
   mutate(final_id = genus) %>% 
   group_by_at(vars(-reporting_value)) %>% 
   summarize(reporting_value = sum(reporting_value)) %>% 
@@ -225,7 +242,7 @@ taxa2.df <- taxa.df %>%
   select(unique_id, icprb_bioregion_id, rare_count, final_id, phylum, subphylum, class, subclass, order, suborder, family, subfamily, tribe, genus, habit, ffg, bibi_tv)
 ```
 **Optional:**  
-If you would like to preserve the rarefied data frame created above, export it as a CSV. 
+If you would like to preserve the rarefied data frame created above, export it as a CSV. Don't forget to replace `file= ` with your own file name. 
 ```{r eval=FALSE}
 write.csv(taxa.df, file= "name_of_file.csv")
 ```
@@ -882,7 +899,7 @@ rich_trichoptera <- rare  %>%
  metrics.key <- merge(metrics.key, rich_trichoptera, by = "unique_id", all=TRUE)
  metrics.key[is.na(metrics.key)] <- 0 
 ```
-To download metrics.key as a csv, run the following script. The csv will be stored in the working directory that you have set up.
+To download metrics.key as a CSV, run the following script. The CSV will be stored in the working directory that you have set up. Don't forget to replace `file= ` with your own file name.
 ```{r eval=FALSE}
 write.csv(metrics.key, file= "name_of_file.csv")
 ```
@@ -1166,9 +1183,8 @@ Score the metrics. This was done using the following steps:
 3. On Final Report Page 21, select Equation 5 if the metric decreases with disturbance and Equation 6 if the metric increases with disturbance. 
 
 4. Refer to Table 15 again. The *Reference Median* and *Bound* columns correspond to *X~M~* and *X~T~* in the equations, respectively. The scoring equations are implemented below.
-
-NAPU Metric Scoring
 ```{r}
+# NAPU Metric Scoring
 NAPU_score$score_margalefs <- 
   case_when(
     NAPU_score$margalefs > 2.83 ~ 100,
@@ -1282,9 +1298,8 @@ NAPU_score$score_rich_sprawl <-
     NAPU_score$rich_sprawl < 1.0 ~ 100,
     NAPU_score$rich_sprawl > 2.3 ~ 0,
     TRUE ~ ((2.3-NAPU_score$rich_sprawl)/(2.3-1.0))*100)
-```
-NCA Metric Scoring
-```{r}
+
+# NCA Metric Scoring
 NCA_score$score_aspt_mod <-
   case_when(
     NCA_score$aspt_mod > 7.54 ~ 100,
@@ -1338,9 +1353,8 @@ NCA_score$score_rich_plecoptera <-
     NCA_score$rich_plecoptera > 4.04 ~ 100,
     NCA_score$rich_plecoptera < 3.45 ~ 0,
     TRUE ~ ((NCA_score$rich_plecoptera - 3.45)/(4.04-3.45))*100)
-```
-CA Metric Scoring
-```{r}
+
+# CA Metric Scoring
 CA_score$score_pct_ept_rich <-
   case_when(
     CA_score$pct_ept_rich > 66.82 ~ 100,
@@ -1418,9 +1432,8 @@ CA_score$score_rich_predator <-
     CA_score$rich_predator > 3.0 ~ 100,
     CA_score$rich_predator < 1.44 ~ 0,
     TRUE ~ ((CA_score$rich_predator-1.44)/(3.0-1.44))*100)
-```
-MAC Metric Scoring
-```{r}
+
+# MAC Metric Scoring
 MAC_score$score_aspt_mod <-
   case_when(
     MAC_score$aspt_mod > 3.27 ~ 100,
@@ -1492,9 +1505,8 @@ MAC_score$score_rich_tol <-
     MAC_score$rich_tol > 4.0 ~ 100,
     MAC_score$rich_tol < 2.16 ~ 0,
     TRUE ~ ((MAC_score$rich_tol-2.16)/(4.0-2.16))*100)
-```
-SEP Metric Scoring
-```{r}
+
+# SEP Metric Scoring
 SEP_score$score_aspt_mod <-
   case_when(
     SEP_score$aspt_mod > 4.65 ~ 100,
@@ -1560,9 +1572,8 @@ SEP_score$score_rich_trichoptera <-
     SEP_score$rich_trichoptera > 2.0 ~ 100,
     SEP_score$rich_trichoptera < 0.41 ~ 0,
     TRUE ~ ((SEP_score$rich_trichoptera-0.41)/(2.0-0.41))*100)
-```
-BLUE Metric Scoring
-```{r}
+
+# BLUE Metric Scoring
 BLUE_score$score_pct_burrow <-
   case_when(
     BLUE_score$pct_burrow < 12.65 ~ 100,
@@ -1592,9 +1603,8 @@ BLUE_score$score_rich_ephemeroptera <-
     BLUE_score$rich_ephemeroptera > 4.0 ~ 100,
     BLUE_score$rich_ephemeroptera < 0.33 ~ 0,
     TRUE ~ ((BLUE_score$rich_ephemeroptera-0.33)/(4.0-0.33))*100)
-```
-NRV Metric Scoring
-```{r}
+
+# NRV Metric Scoring
 NRV_score$score_aspt_mod <-
   case_when(
     NRV_score$aspt_mod > 6.27 ~ 100,
@@ -1642,9 +1652,8 @@ NRV_score$score_rich_trichoptera <-
     NRV_score$rich_trichoptera > 3.0 ~ 100,
     NRV_score$rich_trichoptera < 2.53 ~ 0,
     TRUE ~ ((NRV_score$rich_trichoptera-2.53)/(3.0-2.53))*100)
-```
-UNP Metric Scoring
-```{r}
+
+# UNP Metric Scoring
 UNP_score$score_hbi <-
   case_when(
     UNP_score$hbi < 4.01 ~ 100,
@@ -1716,9 +1725,8 @@ UNP_score$score_rich_trichoptera <-
     UNP_score$rich_trichoptera > 3.0 ~ 100,
     UNP_score$rich_trichoptera < 1.01 ~ 0,
     TRUE ~ ((UNP_score$rich_trichoptera-1.01)/(3.0-1.01))*100)
-```
-SRV Metric Scoring
-```{r}
+
+# SRV Metric Scoring
 SRV_score$score_aspt_mod <-
   case_when(
     SRV_score$aspt_mod > 6.44 ~ 100,
@@ -1808,9 +1816,8 @@ SRV_score$score_rich_trichoptera <-
     SRV_score$rich_trichoptera > 3.0 ~ 100,
     SRV_score$rich_trichoptera < 2.79 ~ 0,
     TRUE ~ ((SRV_score$rich_trichoptera-2.79)/(3.0-2.79))*100)
-```
-SGV Metric Scoring
-```{r}
+
+# SGV Metric Scoring
 SGV_score$score_aspt_mod <-
   case_when(
     SGV_score$aspt_mod > 6.44 ~ 100,
@@ -1936,9 +1943,8 @@ SGV_score$score_rich_trichoptera <-
     SGV_score$rich_trichoptera > 2.54 ~ 100,
     SGV_score$rich_trichoptera < 0.08 ~ 0,
     TRUE ~ ((SGV_score$rich_trichoptera-0.08)/(2.54-0.08))*100)
-```
-LNP Metric Scoring
-```{r}
+
+# LNP Metric Scoring
 LNP_score$score_aspt_mod <-
   case_when(
     LNP_score$aspt_mod > 6.62 ~ 100,
@@ -1992,9 +1998,8 @@ LNP_score$score_rich_ephemeroptera <-
     LNP_score$rich_ephemeroptera > 3.0 ~ 100,
     LNP_score$rich_ephemeroptera < 1.7 ~ 0,
     TRUE ~ ((LNP_score$rich_ephemeroptera-1.7)/(3.0-1.7))*100)
-```
-PIED Metric Scoring
-```{r}
+
+# PIED Metric Scoring
 PIED_score$score_pct_cling <-
   case_when(
     PIED_score$pct_cling > 62.62 ~ 100,
@@ -2203,7 +2208,7 @@ bind9 <- rbind(bind8, SGV_sub)
 bind10 <- rbind(bind9, LNP_sub)
 bibi_ratings_combined <- rbind(bind10, PIED_sub)
 ```
-To download a csv of the Chessie BIBI ratings of all bioregions, use the following script.
+To download a CSV of the Chessie BIBI ratings of all bioregions, use the following script. Don't forget to replace `file= ` with your own file name.
 ```{r eval=FALSE}
 write.csv(bibi_ratings_combined, file= "name_of_file.csv")
 ```
@@ -2235,7 +2240,7 @@ pie_total <- bibi_ratings_combined %>%
   ungroup() %>%
   mutate(percent = count / total * 100)
 
-slices <- c(21.49659, 18.32555, 16.42113, 26.10492, 17.65181)
+slices <- c(16.84758, 21.29193, 18., 28.17866, 15.44177)
 lbls <- c("Excellent", "Good", "Fair", "Poor", "Very Poor")
 pct <- round(slices/sum(slices)*100)
 lbls <- paste(lbls, pct)
