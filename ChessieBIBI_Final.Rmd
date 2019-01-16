@@ -53,7 +53,7 @@ library(odbc) # For Windows 64-bit; see 1.2
 library(RODBC) # For Windows 32-bit; see 1.2
 library(DBI)
 library(magrittr)
-library(vegan)
+library(benthos)
 library(ggplot2)
 ```
 ####**1.2**
@@ -242,246 +242,283 @@ non_rare <- prep.df2 %>%
 
 # If you had exported the rarefied data as a CSV above, read it in at this time using: read.csv("name_of_file.csv")
 rare <- taxa.df %>%
-   arrange(unique_id) %>%
-   ungroup()
+ arrange(unique_id) %>%
+ ungroup()
   
 # Create the metrics.key data frame.
- metrics.key <- non_rare %>%              
-  select(unique_id, icprb_bioregion_id, event_latitude, event_longitude, huc_12) %>%
-  unique() %>%
-  arrange(unique_id) 
+metrics.key <- non_rare %>%              
+ select(unique_id, icprb_bioregion_id, event_latitude, event_longitude, huc_12) %>%
+ unique() %>%
+ arrange(unique_id) 
 
-# Calculate the metrics. Use long.df to specify which data frame to use (non-rarefied or rarefied. First, the non-rarefied data will be used.)
- sample_sum <- non_rare %>%
-   group_by(unique_id) %>%
-   summarise(sample_sum = sum(reporting_value)) 
+## CALCULATE THE METRICS ##
+# Calculate how many individuals are in each unique_id (unique sampling event)
+sample_sum <- non_rare %>%
+ group_by(unique_id) %>%
+ summarise(sample_sum = sum(reporting_value)) 
    
- aspt_mod <- non_rare %>%
-   group_by(unique_id) %>%
-   filter(!is.na(bibi_tv)) %>%
-   summarise(aspt_mod = mean(bibi_tv))
+# ASPT_mod  
+aspt_mod <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(bibi_tv)) %>%
+ summarise(aspt_mod = mean(bibi_tv))
  metrics.key$aspt_mod <- aspt_mod$aspt_mod
+
+# pct_gastro_oligo 
+pct_gastro_oligo <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(class)) %>% 
+ summarise(sum = sum(reporting_value[class %in% c("gastropoda", "oligochatea")]))  
+ metrics.key$pct_gastro_oligo <- (pct_gastro_oligo$sum / sample_sum$sample_sum )*100
+
+# pct_diptera
+pct_diptera <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(order)) %>% 
+ summarise(sum = sum(reporting_value[order %in% c("diptera")]))  
+ metrics.key$pct_diptera <- (pct_diptera$sum / sample_sum$sample_sum)*100
+
+# GOLD  
+metrics.key$gold <- 100 - (metrics.key$pct_gastro_oligo + metrics.key$pct_diptera) 
+
+# HBI    
+hbi_multiplier <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(bibi_tv)) %>% 
+ summarise(multiplier = sum(reporting_value*bibi_tv)) 
+
+hbi_divisor <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(bibi_tv)) %>% 
+ summarise(divisor = sum(reporting_value))
+
+metrics.key$hbi <- hbi_multiplier$multiplier / hbi_divisor$divisor
+
+# pct_arthropoda      
+pct_arthropoda <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(phylum)) %>% 
+ summarise(sum = sum(reporting_value[phylum %in% c("arthropoda")]))  
+ metrics.key$pct_arthropoda <- (pct_arthropoda$sum / sample_sum$sample_sum )*100
+
+# pct_burrow    
+pct_burrow <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(habit)) %>% 
+ summarise(sum = sum(reporting_value[habit %in% c("burrow")]))  
+ metrics.key$pct_burrow <- (pct_burrow$sum / sample_sum$sample_sum )*100
  
- # metrics.key$aspt_mod2 <- taxa_tol_index(    
- #  long.df = non_rare,
- #  unique.id.col = unique_id,
- #  count.col = reporting_value,
- #  tol.col = aspt)
-  
-  pct_gastro_oligo <- non_rare %>%
-   group_by(unique_id) %>%
-    filter(!is.na(class)) %>% 
-    summarise(sum = sum(reporting_value[class %in% c("gastropoda", "oligochatea")]))  
-  metrics.key$pct_gastro_oligo <- (pct_gastro_oligo$sum / sample_sum$sample_sum )*100
+# pct_chironomidae   
+pct_chironomidae <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(family)) %>% 
+ summarise(sum = sum(reporting_value[family %in% c("chironomidae")]))  
+ metrics.key$pct_chironomidae <- (pct_chironomidae$sum / sample_sum$sample_sum )*100
 
-  pct_diptera <- non_rare %>%
-   group_by(unique_id) %>%
-    filter(!is.na(order)) %>% 
-    summarise(sum = sum(reporting_value[order %in% c("diptera")]))  
-  metrics.key$pct_diptera <- (pct_diptera$sum / sample_sum$sample_sum)*100
-  
-  metrics.key$gold <- 100 - (metrics.key$pct_gastro_oligo + metrics.key$pct_diptera) 
-  
-  hbi_multiplier <- non_rare %>%
-   group_by(unique_id) %>%
-    filter(!is.na(bibi_tv)) %>% 
-     summarise(multiplier = sum(reporting_value*bibi_tv)) 
-  hbi_divisor <- non_rare %>%
-    group_by(unique_id) %>%
-     filter(!is.na(bibi_tv)) %>% 
-      summarise(divisor = sum(reporting_value))
-  metrics.key$hbi <- hbi_multiplier$multiplier / hbi_divisor$divisor
-    
- pct_arthropoda <- non_rare %>%
-   group_by(unique_id) %>%
-    filter(!is.na(phylum)) %>% 
-    summarise(sum = sum(reporting_value[phylum %in% c("arthropoda")]))  
-  metrics.key$pct_arthropoda <- (pct_arthropoda$sum / sample_sum$sample_sum )*100
-  
-  pct_burrow <- non_rare %>%
-   group_by(unique_id) %>%
-    filter(!is.na(habit)) %>% 
-    summarise(sum = sum(reporting_value[habit %in% c("burrow")]))  
-  metrics.key$pct_burrow <- (pct_burrow$sum / sample_sum$sample_sum )*100
-  
-  pct_chironomidae <- non_rare %>%
-     group_by(unique_id) %>%
-      filter(!is.na(family)) %>% 
-      summarise(sum = sum(reporting_value[family %in% c("chironomidae")]))  
-    metrics.key$pct_chironomidae <- (pct_chironomidae$sum / sample_sum$sample_sum )*100
+# pct_cling  
+pct_cling <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(habit)) %>% 
+ summarise(sum = sum(reporting_value[habit %in% c("cling")]))  
+ metrics.key$pct_cling <- (pct_cling$sum / sample_sum$sample_sum )*100  
 
-  pct_cling <- non_rare %>%
-     group_by(unique_id) %>%
-      filter(!is.na(habit)) %>% 
-      summarise(sum = sum(reporting_value[habit %in% c("cling")]))  
-    metrics.key$pct_cling <- (pct_cling$sum / sample_sum$sample_sum )*100  
+# pct_burrow
+pct_burrow <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(habit)) %>% 
+ summarise(sum = sum(reporting_value[habit %in% c("burrow")]))  
+ metrics.key$pct_burrow <- (pct_burrow$sum / sample_sum$sample_sum )*100  
+
+#pct_collect 
+pct_collect <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(ffg)) %>% 
+ summarise(sum = sum(reporting_value[ffg %in% c("filter", "gather")]))  
+ metrics.key$pct_collect <- (pct_collect$sum / sample_sum$sample_sum )*100    
+
+# pct_cote    
+pct_cote <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(order)) %>% 
+ summarise(sum = sum(reporting_value[order %in% c("coleoptera", "trichoptera", "ephemeroptera", "odonata")]))  
+ metrics.key$pct_cote <- (pct_cote$sum / sample_sum$sample_sum )*100
+
+# pct_ephemeroptera    
+pct_ephemeroptera <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(order)) %>% 
+ summarise(sum = sum(reporting_value[order %in% c("ephemeroptera")]))  
+ metrics.key$pct_ephemeroptera <- (pct_ephemeroptera$sum / sample_sum$sample_sum )*100
+
+# pct_baetidae    
+pct_baetidae <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(family)) %>% 
+ summarise(sum = sum(reporting_value[family %in% c("baetidae")]))  
+ metrics.key$pct_baetidae <- (pct_baetidae$sum / sample_sum$sample_sum )*100
  
-  pct_burrow <- non_rare %>%
-     group_by(unique_id) %>%
-      filter(!is.na(habit)) %>% 
-      summarise(sum = sum(reporting_value[habit %in% c("burrow")]))  
-    metrics.key$pct_burrow <- (pct_burrow$sum / sample_sum$sample_sum )*100  
- 
-  pct_collect <- non_rare %>%
-     group_by(unique_id) %>%
-      filter(!is.na(ffg)) %>% 
-      summarise(sum = sum(reporting_value[ffg %in% c("filter", "gather")]))  
-    metrics.key$pct_collect <- (pct_collect$sum / sample_sum$sample_sum )*100    
+# pct_ephemeroptera_no_baetid       
+metrics.key$pct_ephemeroptera_no_baetid <- metrics.key$pct_ephemeroptera - metrics.key$pct_baetidae
 
-  pct_cote <- non_rare %>%
-     group_by(unique_id) %>%
-      filter(!is.na(order)) %>% 
-      summarise(sum = sum(reporting_value[order %in% c("coleoptera", "trichoptera", "ephemeroptera", "odonata")]))  
-    metrics.key$pct_cote <- (pct_cote$sum / sample_sum$sample_sum )*100
-
-  pct_ephemeroptera <- non_rare %>%
-     group_by(unique_id) %>%
-      filter(!is.na(order)) %>% 
-      summarise(sum = sum(reporting_value[order %in% c("ephemeroptera")]))  
-    metrics.key$pct_ephemeroptera <- (pct_ephemeroptera$sum / sample_sum$sample_sum )*100
-
-  pct_baetidae <- non_rare %>%
-     group_by(unique_id) %>%
-      filter(!is.na(family)) %>% 
-      summarise(sum = sum(reporting_value[family %in% c("baetidae")]))  
-    metrics.key$pct_baetidae <- (pct_baetidae$sum / sample_sum$sample_sum )*100
-    
-  metrics.key$pct_ephemeroptera_no_baetid <- metrics.key$pct_ephemeroptera - metrics.key$pct_baetidae
-
-  pct_ept <- non_rare %>%
-     group_by(unique_id) %>%
-      filter(!is.na(order)) %>% 
-      summarise(sum = sum(reporting_value[order %in% c("ephemeroptera", "plecoptera", "trichoptera")]))  
-    metrics.key$pct_ept <- (pct_ept$sum / sample_sum$sample_sum )*100
+# pct_ept  
+pct_ept <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(order)) %>% 
+ summarise(sum = sum(reporting_value[order %in% c("ephemeroptera", "plecoptera", "trichoptera")]))  
+ metrics.key$pct_ept <- (pct_ept$sum / sample_sum$sample_sum )*100
   
-  pct_hydropsychidae <- non_rare %>%
-     group_by(unique_id) %>%
-      filter(!is.na(family)) %>% 
-      summarise(sum = sum(reporting_value[family %in% c("hydropsychidae")]))  
-    metrics.key$pct_hydropsychidae <- (pct_hydropsychidae$sum / sample_sum$sample_sum )*100
+# pct_hydropsychidae    
+pct_hydropsychidae <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(family)) %>% 
+ summarise(sum = sum(reporting_value[family %in% c("hydropsychidae")]))  
+ metrics.key$pct_hydropsychidae <- (pct_hydropsychidae$sum / sample_sum$sample_sum )*100
 
-  metrics.key$pct_ept_no_hydro <- metrics.key$pct_ept - metrics.key$pct_hydropsychidae
+# pct_ept_no_hydro    
+metrics.key$pct_ept_no_hydro <- metrics.key$pct_ept - metrics.key$pct_hydropsychidae
 
-  pct_euholognatha <- non_rare %>%
-     group_by(unique_id) %>%
-      filter(!is.na(suborder)) %>% 
-      summarise(sum = sum(reporting_value[suborder %in% c("euholognatha")]))  
-    metrics.key$pct_euholognatha <- (pct_euholognatha$sum / sample_sum$sample_sum )*100
+# pct_euholognatha  
+pct_euholognatha <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(suborder)) %>% 
+ summarise(sum = sum(reporting_value[suborder %in% c("euholognatha")]))  
+ metrics.key$pct_euholognatha <- (pct_euholognatha$sum / sample_sum$sample_sum )*100
   
-  pct_filter <- non_rare %>%
-     group_by(unique_id) %>%
-      filter(!is.na(ffg)) %>% 
-      summarise(sum = sum(reporting_value[ffg %in% c("filter")]))  
-    metrics.key$pct_filter <- (pct_filter$sum / sample_sum$sample_sum )*100
+# pct_filter    
+pct_filter <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(ffg)) %>% 
+ summarise(sum = sum(reporting_value[ffg %in% c("filter")]))  
+ metrics.key$pct_filter <- (pct_filter$sum / sample_sum$sample_sum )*100
 
-  pct_heptageniidae <- non_rare %>%
-     group_by(unique_id) %>%
-      filter(!is.na(family)) %>% 
-      summarise(sum = sum(reporting_value[family %in% c("heptageniidae")]))  
-    metrics.key$pct_heptageniidae <- (pct_heptageniidae$sum / sample_sum$sample_sum )*100
+# pct_heptageniidae    
+pct_heptageniidae <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(family)) %>% 
+ summarise(sum = sum(reporting_value[family %in% c("heptageniidae")]))  
+ metrics.key$pct_heptageniidae <- (pct_heptageniidae$sum / sample_sum$sample_sum )*100
 
-  pct_hexapoda <- non_rare %>%
-     group_by(unique_id) %>%
-      filter(!is.na(subphylum)) %>% 
-      summarise(sum = sum(reporting_value[subphylum %in% c("hexapoda")]))  
-    metrics.key$pct_hexapoda <- (pct_hexapoda$sum / sample_sum$sample_sum )*100
+# pct_hexapoda    
+pct_hexapoda <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(subphylum)) %>% 
+ summarise(sum = sum(reporting_value[subphylum %in% c("hexapoda")]))  
+ metrics.key$pct_hexapoda <- (pct_hexapoda$sum / sample_sum$sample_sum )*100
 
-  metrics.key$pct_hydro_ept <- ifelse(metrics.key$pct_ept == 0, 0, (metrics.key$pct_hydropsychidae / metrics.key$pct_ept) * 100)
+# pct_hydro_ept    
+metrics.key$pct_hydro_ept <- ifelse(metrics.key$pct_ept == 0, 0, (metrics.key$pct_hydropsychidae / metrics.key$pct_ept) * 100)
+
+# pct_intol_0_3    
+pct_intol_0_3 <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(bibi_tv)) %>% 
+ summarise(sum = sum(reporting_value[bibi_tv %in% c("0", "1", "2", "3")]))  
+ metrics.key$pct_intol_0_3 <- (pct_intol_0_3$sum / sample_sum$sample_sum )*100
   
-  pct_intol_0_3 <- non_rare %>%
-    group_by(unique_id) %>%
-     filter(!is.na(bibi_tv)) %>% 
-     summarise(sum = sum(reporting_value[bibi_tv %in% c("0", "1", "2", "3")]))  
-   metrics.key$pct_intol_0_3 <- (pct_intol_0_3$sum / sample_sum$sample_sum )*100
-  
-  pct_intol_0_4 <- non_rare %>%
-   group_by(unique_id) %>%
-    filter(!is.na(bibi_tv)) %>% 
-    summarise(sum = sum(reporting_value[bibi_tv %in% c("0", "1", "2", "3", "4")]))  
-  metrics.key$pct_intol_0_4 <- (pct_intol_0_4$sum / sample_sum$sample_sum )*100
+# pct_intol_0_4   
+pct_intol_0_4 <- non_rare %>%
+ group_by(unique_id) %>%
+ filter(!is.na(bibi_tv)) %>% 
+ summarise(sum = sum(reporting_value[bibi_tv %in% c("0", "1", "2", "3", "4")]))  
+ metrics.key$pct_intol_0_4 <- (pct_intol_0_4$sum / sample_sum$sample_sum )*100
 
+# pct_amph_iso  
   pct_amph_iso <- non_rare %>%
    group_by(unique_id) %>%
     filter(!is.na(order)) %>% 
     summarise(sum = sum(reporting_value[order %in% c("amphipoda", "isopoda")]))  
   metrics.key$pct_amph_iso <- (pct_amph_iso$sum / sample_sum$sample_sum )*100  
 
+# pct_ephemerellidae  
   pct_ephemerellidae <- non_rare %>%
    group_by(unique_id) %>%
     filter(!is.na(family)) %>% 
     summarise(sum = sum(reporting_value[family %in% c("ephemerellidae")]))  
   metrics.key$pct_ephemerellidae <- (pct_ephemerellidae$sum / sample_sum$sample_sum )*100  
-  
+
+# pct_limestone    
   metrics.key$pct_limestone <- metrics.key$pct_amph_iso + metrics.key$pct_ephemerellidae
 
+# pct_mod_tol_4_6 
   pct_mod_tol_4_6 <- non_rare %>%
    group_by(unique_id) %>%
     filter(!is.na(bibi_tv)) %>% 
     summarise(sum = sum(reporting_value[bibi_tv %in% c("4", "5", "6")]))  
   metrics.key$pct_mod_tol_4_6 <- (pct_mod_tol_4_6$sum / sample_sum$sample_sum )*100  
-  
+
+# pct_trichoptera    
   pct_trichoptera <- non_rare %>%
    group_by(unique_id) %>%
     filter(!is.na(order)) %>% 
     summarise(sum = sum(reporting_value[order %in% c("trichoptera")]))  
   metrics.key$pct_trichoptera <- (pct_trichoptera$sum / sample_sum$sample_sum )*100  
 
+# pct_non_hydrop_trichoptera  
   metrics.key$pct_non_hydrop_trichoptera <- metrics.key$pct_trichoptera - metrics.key$pct_hydropsychidae
 
+# pct_odonata  
   pct_odonata <- non_rare %>%
-   group_by(unique_id) %>%
+    group_by(unique_id) %>%
     filter(!is.na(order)) %>% 
     summarise(sum = sum(reporting_value[order %in% c("odonata")]))  
   metrics.key$pct_odonata <- (pct_odonata$sum / sample_sum$sample_sum )*100  
   
+# pct_pisciforma  
   pct_pisciforma <- non_rare %>%
      group_by(unique_id) %>%
       filter(!is.na(suborder)) %>% 
       summarise(sum = sum(reporting_value[suborder %in% c("pisciforma")]))  
   metrics.key$pct_pisciforma <- (pct_pisciforma$sum / sample_sum$sample_sum )*100  
 
+# pct_predator  
   pct_predator <- non_rare %>%
        group_by(unique_id) %>%
         filter(!is.na(ffg)) %>% 
         summarise(sum = sum(reporting_value[ffg %in% c("predator")]))  
   metrics.key$pct_predator <- (pct_predator$sum / sample_sum$sample_sum )*100  
   
+# pct_pterygota  
   pct_pterygota <- non_rare %>%
        group_by(unique_id) %>%
         filter(!is.na(subclass)) %>% 
         summarise(sum = sum(reporting_value[subclass %in% c("pterygota")]))  
   metrics.key$pct_pterygota <- (pct_pterygota$sum / sample_sum$sample_sum )*100 
 
+# pct_retreat_caddisfly  
   pct_retreat_caddisfly <- non_rare %>%
        group_by(unique_id) %>%
         filter(!is.na(suborder)) %>% 
         summarise(sum = sum(reporting_value[suborder %in% c("annulipalpia")]))  
    metrics.key$pct_retreat_caddisfly <- (pct_retreat_caddisfly$sum / sample_sum$sample_sum )*100 
 
+# pct_scrape   
   pct_scrape <- non_rare %>%
        group_by(unique_id) %>%
         filter(!is.na(ffg)) %>% 
         summarise(sum = sum(reporting_value[ffg %in% c("scrape")]))  
    metrics.key$pct_scrape <- (pct_scrape$sum / sample_sum$sample_sum )*100 
    
+# pct_sprawl   
   pct_sprawl <- non_rare %>%
        group_by(unique_id) %>%
         filter(!is.na(habit)) %>% 
         summarise(sum = sum(reporting_value[habit %in% c("sprawl")]))  
    metrics.key$pct_sprawl <- (pct_sprawl$sum / sample_sum$sample_sum )*100 
 
+# pct_systellognatha   
   pct_systellognatha <- non_rare %>%
        group_by(unique_id) %>%
         filter(!is.na(suborder)) %>% 
         summarise(sum = sum(reporting_value[suborder %in% c("systellognatha")]))  
    metrics.key$pct_systellognatha <- (pct_systellognatha$sum / sample_sum$sample_sum )*100 
 
+# pct_tolerant_7_10   
   pct_tolerant_7_10 <- non_rare %>%
        group_by(unique_id) %>%
         filter(!is.na(bibi_tv)) %>% 
         summarise(sum = sum(reporting_value[bibi_tv %in% c("7", "8", "9", "10")]))  
    metrics.key$pct_tolerant_7_10 <- (pct_tolerant_7_10$sum / sample_sum$sample_sum )*100 
-
+# pct_urban_intol   
   pct_urban_intol <- non_rare %>%
        group_by(unique_id) %>%
         filter(!is.na(family)) %>% 
@@ -542,55 +579,51 @@ rare <- taxa.df %>%
    metrics.key$pct_urban_intol <- (pct_urban_intol$sum / sample_sum$sample_sum )*100 
 
 # Richness/Diversity metrics require rarefied data
-family_richness <- rare %>%
+# Calculate family-level taxa richness for each unique_id
+   family_richness <- rare %>%
   group_by(unique_id) %>%
   summarise(family_richness = n_distinct(family)) 
-## MARGALEFS
-margalefs <- rare %>%
+
+# Margalefs
+   margalefs_numerator <- family_richness %>%
+  mutate(family_richness = family_richness - 1)
+margalefs_denominator <- rare %>%
    group_by(unique_id) %>%
-   summarise(sample_sum = sum(rare_count))
-metrics.key$pielou <- ((family_richness$family_richness - 1)/(log(margalefs$sample_sum))) # NOT APPEARING IN METRIC KEY WHY
-   
-  metrics.key$margalefs2 = taxa_div(
-  long.df = rare,
-  unique.id.col = unique_id,
-  count.col = rare_count, 
-  high.taxa.col = family,
-  job = "margalef")
- ## 
-  taxa_count <- rare %>%
-    group_by(unique_id) %>%
-     filter(!is.na(bibi_tv)) %>%
-      count(unique_id) 
-   pct_ept_rich <- rare %>%
+   summarise(sample_sum = log(sum(rare_count)))
+metrics.key$margalefs <- margalefs_numerator$family_richness / margalefs_denominator$sample_sum
+
+# pct_ept_rich
+ pct_ept_rich <- rare %>%
     group_by(unique_id) %>%
     filter(!is.na(order)) %>%
+    filter(!is.na(bibi_tv)) %>%
     filter(order %in% c("ephemeroptera", "plecoptera", "trichoptera")) %>%
     summarise(rich_ept = n_distinct(family))
-    pct_ept_rich2 <- merge(pct_ept_rich, family_richness, be= "unique_id", all=TRUE)
+    pct_ept_rich2 <- merge(pct_ept_rich, family_richness, by= "unique_id", all=TRUE)
     pct_ept_rich2[is.na(pct_ept_rich2)] <- 0
-    metrics.key$pct_ept_rich2 <- (pct_ept_rich2$rich_ept / pct_ept_rich2$family_richness)*100
+    metrics.key$pct_ept_rich <- (pct_ept_rich2$rich_ept / pct_ept_rich2$family_richness)*100
     
-    
-  ept_no_tol_count <- rare %>%
+# pct_ept_rich_no_tol    
+  pct_ept_rich_no_tol <- rare %>%
     group_by(unique_id) %>%
-     filter(!is.na(bibi_tv)) %>% 
-      tally(order %in% c("ephemeroptera", "plecoptera", "trichoptera") & bibi_tv %in% c("0","1","2","3","4","5","6"))
-    metrics.key$pct_ept_rich_no_tol <- (ept_no_tol_count$n/taxa_count$n)*100
-##  PIELOU
-  library(benthos)
-  shannon <- rare %>%
+    filter(!is.na(order)) %>%
+    filter(!is.na(bibi_tv)) %>%
+    filter(order %in% c("ephemeroptera", "plecoptera", "trichoptera")) %>%
+    filter(bibi_tv %in% c("0","1","2","3","4","5","6")) %>%
+    summarise(rich_ept_no_tol = n_distinct(family))
+    pct_ept_rich_no_tol2 <- merge(pct_ept_rich_no_tol, family_richness, by= "unique_id", all=TRUE)
+    pct_ept_rich_no_tol2[is.na(pct_ept_rich_no_tol2)] <- 0
+    metrics.key$pct_ept_rich_no_tol <- (pct_ept_rich_no_tol2$rich_ept_no_tol / pct_ept_rich_no_tol2$family_richness)*100  
+
+# Pielou
+pielou_shannon <- rare %>%
     group_by(unique_id) %>%
-    summarise(shannon = shannon(taxon = family, count = rare_count))
-  metrics.key$pielou <- (shannon$shannon / log(family_richness$family_richness))
-      
-  metrics.key$pielou2 <- taxa_div(
-  long.df = rare,
-  unique.id.col = unique_id,
-  count.col = rare_count, 
-  high.taxa.col = family,
-  job = "pielou")
-##  
+    summarise(shannon = shannon(taxon = family, count= rare_count))
+pielou_taxa_rich <- family_richness %>%
+  mutate(family_richness = log(family_richness))
+metrics.key$pielou <- pielou_shannon$shannon / pielou_taxa_rich$family_richness
+  
+# rich_burrow  
    rich_burrow <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(habit)) %>%
@@ -600,7 +633,8 @@ metrics.key$pielou <- ((family_richness$family_richness - 1)/(log(margalefs$samp
     metrics.key <- merge(metrics.key, rich_burrow, by="unique_id", all=TRUE)
     metrics.key$rich_burrow[is.na(metrics.key$rich_burrow)] <- 0
   
-  rich_climb <- rare  %>%
+# rich_climb
+    rich_climb <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(habit)) %>%
     filter(habit %in% c("climb")) %>%
@@ -609,7 +643,8 @@ metrics.key$pielou <- ((family_richness$family_richness - 1)/(log(margalefs$samp
     metrics.key <- merge(metrics.key, rich_climb, by="unique_id", all=TRUE)
     metrics.key$rich_climb[is.na(metrics.key$rich_climb)] <- 0
   
-  rich_cling <- rare  %>%
+# rich_cling 
+     rich_cling <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(habit)) %>%
     filter(habit %in% c("cling")) %>%
@@ -618,6 +653,7 @@ metrics.key$pielou <- ((family_richness$family_richness - 1)/(log(margalefs$samp
     metrics.key <- merge(metrics.key, rich_cling, by="unique_id", all=TRUE)
     metrics.key$rich_cling[is.na(metrics.key$rich_cling)] <- 0
  
+# rich_collect_filter    
   rich_collect_filter <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(ffg)) %>%
@@ -637,6 +673,7 @@ metrics.key$pielou <- ((family_richness$family_richness - 1)/(log(margalefs$samp
         rich_collect$rich_collect_filter <- NULL
      metrics.key <- merge(metrics.key, rich_collect, by = "unique_id", all=TRUE)
    
+# rich_ephemeroptera     
  rich_ephemeroptera <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(order)) %>%
@@ -646,6 +683,7 @@ metrics.key$pielou <- ((family_richness$family_richness - 1)/(log(margalefs$samp
     metrics.key <- merge(metrics.key, rich_ephemeroptera, by = "unique_id", all=TRUE)
     metrics.key[is.na(metrics.key)] <- 0
      
+# rich_ept    
   rich_ept <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(order)) %>%
@@ -655,6 +693,7 @@ metrics.key$pielou <- ((family_richness$family_richness - 1)/(log(margalefs$samp
     metrics.key <- merge(metrics.key, rich_ept, by = "unique_id", all=TRUE)
     metrics.key[is.na(metrics.key)] <- 0   
  
+# rich_filter    
   rich_filter <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(ffg)) %>%
@@ -664,6 +703,7 @@ metrics.key$pielou <- ((family_richness$family_richness - 1)/(log(margalefs$samp
     metrics.key <- merge(metrics.key, rich_filter, by = "unique_id", all=TRUE)
     metrics.key[is.na(metrics.key)] <- 0   
 
+# rich_gather    
   rich_gather <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(ffg)) %>%
@@ -673,7 +713,8 @@ metrics.key$pielou <- ((family_richness$family_richness - 1)/(log(margalefs$samp
     metrics.key <- merge(metrics.key, rich_gather, by = "unique_id", all=TRUE)
     metrics.key[is.na(metrics.key)] <- 0   
 
- rich_intol0 <- rare  %>%
+# rich_intol 
+    rich_intol0 <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(bibi_tv)) %>%
     filter(bibi_tv %in% c("0")) %>%
@@ -709,6 +750,7 @@ metrics.key$pielou <- ((family_richness$family_richness - 1)/(log(margalefs$samp
   metrics.key <- merge(metrics.key, rich_intol0123, by = "unique_id", all=TRUE)
   metrics.key[is.na(metrics.key)] <- 0   
 
+# rich_modtol  
 rich_modtol4 <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(bibi_tv)) %>%
@@ -737,6 +779,7 @@ rich_modtol4 <- rare  %>%
   metrics.key <- merge(metrics.key, rich_modtol456, by = "unique_id", all=TRUE)
   metrics.key[is.na(metrics.key)] <- 0  
   
+# rich_plecoptera  
   rich_plecoptera <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(order)) %>%
@@ -746,6 +789,7 @@ rich_modtol4 <- rare  %>%
     metrics.key <- merge(metrics.key, rich_plecoptera, by = "unique_id", all=TRUE)
     metrics.key[is.na(metrics.key)] <- 0  
 
+# rich_predator    
   rich_predator <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(ffg)) %>%
@@ -755,6 +799,7 @@ rich_modtol4 <- rare  %>%
     metrics.key <- merge(metrics.key, rich_predator, by = "unique_id", all=TRUE)
     metrics.key[is.na(metrics.key)] <- 0 
  
+# rich_shred    
   rich_shred <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(ffg)) %>%
@@ -764,6 +809,7 @@ rich_modtol4 <- rare  %>%
     metrics.key <- merge(metrics.key, rich_shred, by = "unique_id", all=TRUE)
     metrics.key[is.na(metrics.key)] <- 0 
 
+# rich_sprawl    
  rich_sprawl <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(habit)) %>%
@@ -773,6 +819,7 @@ rich_modtol4 <- rare  %>%
     metrics.key <- merge(metrics.key, rich_sprawl, by = "unique_id", all=TRUE)
     metrics.key[is.na(metrics.key)] <- 0 
     
+# rich_tol    
   rich_tol7 <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(bibi_tv)) %>%
@@ -809,6 +856,7 @@ rich_modtol4 <- rare  %>%
   metrics.key <- merge(metrics.key, rich_tol78910, by = "unique_id", all=TRUE)
   metrics.key[is.na(metrics.key)] <- 0   
     
+# rich_trichoptera  
   rich_trichoptera <- rare  %>%
     group_by(unique_id) %>%
     filter(!is.na(order)) %>%
