@@ -35,7 +35,7 @@ The following tables are required for the scripts to work, and they will be pull
 Please refer to the (name and url) document and practice data set for information about setting up the tables above. Data may be entered in uppercase or lowercase, but all text will be converted to lowercase during the data preparation process. The document also contains several keys that explain codes and acronyms that were used. The codes and acronyms can be used as a template for your data tables. Finally, it is important that you name all the columns and tables in the same way as they appear in the document, otherwise the scripts will not work.       
 
 ####**1.1** 
-Set the working directory to a location where the scripts can be saved using `setwd("")`. Don't forget to use a forward slash `/` instead of a backward slash `\` in the path name.   
+Set the working directory to a location where the scripts and generated CSV files can be saved using `setwd("")`. Don't forget to use a forward slash `/` instead of a backward slash `\` in the path name.   
 
 Load the following packages into the environment. The packages must be installed before they can be opened; to check if a package in already installed, refer to the Packages tab on the right. To install a package, either type and run `install.packages("name")` or use the Install button under the Packages tab. To open the installed libraries, type and run `library(name)`.  
 
