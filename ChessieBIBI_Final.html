@@ -276,8 +276,9 @@ library(odbc) # For Windows 64-bit; see 1.2
 library(RODBC) # For Windows 32-bit; see 1.2
 library(DBI)
 library(magrittr)
-library(vegan)
-library(ggplot2)</code></pre>
+library(benthos)</code></pre>
+<pre><code>## Warning: package 'benthos' was built under R version 3.5.2</code></pre>
+<pre class="r"><code>library(ggplot2)</code></pre>
 </div>
 <div id="section-1" class="section level4">
 <h4><strong>1.2</strong></h4>
@@ -445,7 +446,7 @@ If you would like to preserve the rarefied data frame created above, export it a
 </div>
 <div id="calculating-biological-metrics" class="section level3">
 <h3><strong>2. Calculating Biological Metrics</strong></h3>
-<p>Now that the data are in the proper format and the samples have been rarefied, the biological metrics can be calcualted using <em>mmir</em>. To streamline this process, all of the metrics are computed for each unique_id. Later on, metrics specific to each bioregion will be selected out.</p>
+<p>Now that the data are in the proper format and the samples have been rarefied, the biological metrics can be calcualted. To streamline this process, all of the metrics are computed for each unique sampling event (unique_id). Later on, metrics specific to each bioregion will be selected.</p>
 <p>The first step is to generate a new data frame for the non-rarefied and rarefied data, both of which are needed because not all metrics calculations require rarefied data.<br />
 Next, a data frame, <strong>metrics.key</strong>, will be generated. <strong>metrics.key</strong> initially only contains the following columns: unique_id, icprb_bioregion_id, event_latitude, event_longitude, and huc_12, but each calculated metric is appended using <code>metrics.key$new_column &lt;-</code>.</p>
 <pre class="r"><code># Create a data frame of the non-rarefied and rarefied data.
@@ -455,275 +456,287 @@ non_rare &lt;- prep.df2 %&gt;%
 
 # If you had exported the rarefied data as a CSV above, read it in at this time using: read.csv(&quot;name_of_file.csv&quot;)
 rare &lt;- taxa.df %&gt;%
-   arrange(unique_id) %&gt;%
-   ungroup()
+ arrange(unique_id) %&gt;%
+ ungroup()
   
 # Create the metrics.key data frame.
- metrics.key &lt;- non_rare %&gt;%              
-  select(unique_id, icprb_bioregion_id, event_latitude, event_longitude, huc_12) %&gt;%
-  unique() %&gt;%
-  arrange(unique_id) 
+metrics.key &lt;- non_rare %&gt;%              
+ select(unique_id, icprb_bioregion_id, event_latitude, event_longitude, huc_12) %&gt;%
+ unique() %&gt;%
+ arrange(unique_id) 
 
-# Calculate the metrics. Use long.df to specify which data frame to use (non-rarefied or rarefied. First, the non-rarefied data will be used.)
-  metrics.key$aspt_mod &lt;- taxa_tol_index( 
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  tol.col = aspt)
+## CALCULATE THE METRICS ##
+# Calculate how many individuals are in each unique_id (unique sampling event)
+sample_sum &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ summarise(sample_sum = sum(reporting_value)) 
+   
+# ASPT_mod  
+aspt_mod &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;%
+ summarise(aspt_mod = mean(bibi_tv))
+ metrics.key$aspt_mod &lt;- aspt_mod$aspt_mod
+
+# pct_gastro_oligo 
+pct_gastro_oligo &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(class)) %&gt;% 
+ summarise(sum = sum(reporting_value[class %in% c(&quot;gastropoda&quot;, &quot;oligochatea&quot;)]))  
+ metrics.key$pct_gastro_oligo &lt;- (pct_gastro_oligo$sum / sample_sum$sample_sum )*100
+
+# pct_diptera
+pct_diptera &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(order)) %&gt;% 
+ summarise(sum = sum(reporting_value[order %in% c(&quot;diptera&quot;)]))  
+ metrics.key$pct_diptera &lt;- (pct_diptera$sum / sample_sum$sample_sum)*100
+
+# GOLD  
+metrics.key$gold &lt;- 100 - (metrics.key$pct_gastro_oligo + metrics.key$pct_diptera) 
+
+# HBI    
+hbi_multiplier &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;% 
+ summarise(multiplier = sum(reporting_value*bibi_tv)) 
+
+hbi_divisor &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;% 
+ summarise(divisor = sum(reporting_value))
+
+metrics.key$hbi &lt;- hbi_multiplier$multiplier / hbi_divisor$divisor
+
+# pct_arthropoda      
+pct_arthropoda &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(phylum)) %&gt;% 
+ summarise(sum = sum(reporting_value[phylum %in% c(&quot;arthropoda&quot;)]))  
+ metrics.key$pct_arthropoda &lt;- (pct_arthropoda$sum / sample_sum$sample_sum )*100
+
+# pct_burrow    
+pct_burrow &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(habit)) %&gt;% 
+ summarise(sum = sum(reporting_value[habit %in% c(&quot;burrow&quot;)]))  
+ metrics.key$pct_burrow &lt;- (pct_burrow$sum / sample_sum$sample_sum )*100
+ 
+# pct_chironomidae   
+pct_chironomidae &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(family)) %&gt;% 
+ summarise(sum = sum(reporting_value[family %in% c(&quot;chironomidae&quot;)]))  
+ metrics.key$pct_chironomidae &lt;- (pct_chironomidae$sum / sample_sum$sample_sum )*100
+
+# pct_cling  
+pct_cling &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(habit)) %&gt;% 
+ summarise(sum = sum(reporting_value[habit %in% c(&quot;cling&quot;)]))  
+ metrics.key$pct_cling &lt;- (pct_cling$sum / sample_sum$sample_sum )*100  
+
+# pct_burrow
+pct_burrow &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(habit)) %&gt;% 
+ summarise(sum = sum(reporting_value[habit %in% c(&quot;burrow&quot;)]))  
+ metrics.key$pct_burrow &lt;- (pct_burrow$sum / sample_sum$sample_sum )*100  
+
+#pct_collect 
+pct_collect &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(ffg)) %&gt;% 
+ summarise(sum = sum(reporting_value[ffg %in% c(&quot;filter&quot;, &quot;gather&quot;)]))  
+ metrics.key$pct_collect &lt;- (pct_collect$sum / sample_sum$sample_sum )*100    
+
+# pct_cote    
+pct_cote &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(order)) %&gt;% 
+ summarise(sum = sum(reporting_value[order %in% c(&quot;coleoptera&quot;, &quot;trichoptera&quot;, &quot;ephemeroptera&quot;, &quot;odonata&quot;)]))  
+ metrics.key$pct_cote &lt;- (pct_cote$sum / sample_sum$sample_sum )*100
+
+# pct_ephemeroptera    
+pct_ephemeroptera &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(order)) %&gt;% 
+ summarise(sum = sum(reporting_value[order %in% c(&quot;ephemeroptera&quot;)]))  
+ metrics.key$pct_ephemeroptera &lt;- (pct_ephemeroptera$sum / sample_sum$sample_sum )*100
+
+# pct_baetidae    
+pct_baetidae &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(family)) %&gt;% 
+ summarise(sum = sum(reporting_value[family %in% c(&quot;baetidae&quot;)]))  
+ metrics.key$pct_baetidae &lt;- (pct_baetidae$sum / sample_sum$sample_sum )*100
+ 
+# pct_ephemeroptera_no_baetid       
+metrics.key$pct_ephemeroptera_no_baetid &lt;- metrics.key$pct_ephemeroptera - metrics.key$pct_baetidae
+
+# pct_ept  
+pct_ept &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(order)) %&gt;% 
+ summarise(sum = sum(reporting_value[order %in% c(&quot;ephemeroptera&quot;, &quot;plecoptera&quot;, &quot;trichoptera&quot;)]))  
+ metrics.key$pct_ept &lt;- (pct_ept$sum / sample_sum$sample_sum )*100
   
-  metrics.key$pct_gastro_oligo &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = class,
-  taxon = c(&quot;gastropoda&quot;, &quot;oligochatea&quot;))
+# pct_hydropsychidae    
+pct_hydropsychidae &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(family)) %&gt;% 
+ summarise(sum = sum(reporting_value[family %in% c(&quot;hydropsychidae&quot;)]))  
+ metrics.key$pct_hydropsychidae &lt;- (pct_hydropsychidae$sum / sample_sum$sample_sum )*100
+
+# pct_ept_no_hydro    
+metrics.key$pct_ept_no_hydro &lt;- metrics.key$pct_ept - metrics.key$pct_hydropsychidae
+
+# pct_euholognatha  
+pct_euholognatha &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(suborder)) %&gt;% 
+ summarise(sum = sum(reporting_value[suborder %in% c(&quot;euholognatha&quot;)]))  
+ metrics.key$pct_euholognatha &lt;- (pct_euholognatha$sum / sample_sum$sample_sum )*100
   
-  metrics.key$pct_diptera &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = order,
-  taxon = &quot;diptera&quot;)
+# pct_filter    
+pct_filter &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(ffg)) %&gt;% 
+ summarise(sum = sum(reporting_value[ffg %in% c(&quot;filter&quot;)]))  
+ metrics.key$pct_filter &lt;- (pct_filter$sum / sample_sum$sample_sum )*100
+
+# pct_heptageniidae    
+pct_heptageniidae &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(family)) %&gt;% 
+ summarise(sum = sum(reporting_value[family %in% c(&quot;heptageniidae&quot;)]))  
+ metrics.key$pct_heptageniidae &lt;- (pct_heptageniidae$sum / sample_sum$sample_sum )*100
+
+# pct_hexapoda    
+pct_hexapoda &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(subphylum)) %&gt;% 
+ summarise(sum = sum(reporting_value[subphylum %in% c(&quot;hexapoda&quot;)]))  
+ metrics.key$pct_hexapoda &lt;- (pct_hexapoda$sum / sample_sum$sample_sum )*100
+
+# pct_hydro_ept    
+metrics.key$pct_hydro_ept &lt;- ifelse(metrics.key$pct_ept == 0, 0, (metrics.key$pct_hydropsychidae / metrics.key$pct_ept) * 100)
+
+# pct_intol_0_3    
+pct_intol_0_3 &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;% 
+ summarise(sum = sum(reporting_value[bibi_tv %in% c(&quot;0&quot;, &quot;1&quot;, &quot;2&quot;, &quot;3&quot;)]))  
+ metrics.key$pct_intol_0_3 &lt;- (pct_intol_0_3$sum / sample_sum$sample_sum )*100
   
-  metrics.key$gold &lt;- 100 - (metrics.key$pct_gastro_oligo + metrics.key$pct_diptera) 
+# pct_intol_0_4   
+pct_intol_0_4 &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;% 
+ summarise(sum = sum(reporting_value[bibi_tv %in% c(&quot;0&quot;, &quot;1&quot;, &quot;2&quot;, &quot;3&quot;, &quot;4&quot;)]))  
+ metrics.key$pct_intol_0_4 &lt;- (pct_intol_0_4$sum / sample_sum$sample_sum )*100
+
+# pct_amph_iso  
+pct_amph_iso &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(order)) %&gt;% 
+ summarise(sum = sum(reporting_value[order %in% c(&quot;amphipoda&quot;, &quot;isopoda&quot;)]))  
+ metrics.key$pct_amph_iso &lt;- (pct_amph_iso$sum / sample_sum$sample_sum )*100  
+
+# pct_ephemerellidae  
+pct_ephemerellidae &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(family)) %&gt;% 
+ summarise(sum = sum(reporting_value[family %in% c(&quot;ephemerellidae&quot;)]))  
+ metrics.key$pct_ephemerellidae &lt;- (pct_ephemerellidae$sum / sample_sum$sample_sum )*100  
+
+# pct_limestone    
+metrics.key$pct_limestone &lt;- metrics.key$pct_amph_iso + metrics.key$pct_ephemerellidae
+
+# pct_mod_tol_4_6 
+pct_mod_tol_4_6 &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;% 
+ summarise(sum = sum(reporting_value[bibi_tv %in% c(&quot;4&quot;, &quot;5&quot;, &quot;6&quot;)]))  
+ metrics.key$pct_mod_tol_4_6 &lt;- (pct_mod_tol_4_6$sum / sample_sum$sample_sum )*100  
+
+# pct_trichoptera    
+pct_trichoptera &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(order)) %&gt;% 
+ summarise(sum = sum(reporting_value[order %in% c(&quot;trichoptera&quot;)]))  
+ metrics.key$pct_trichoptera &lt;- (pct_trichoptera$sum / sample_sum$sample_sum )*100  
+
+# pct_non_hydrop_trichoptera  
+metrics.key$pct_non_hydrop_trichoptera &lt;- metrics.key$pct_trichoptera - metrics.key$pct_hydropsychidae
+
+# pct_odonata  
+pct_odonata &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(order)) %&gt;% 
+ summarise(sum = sum(reporting_value[order %in% c(&quot;odonata&quot;)]))  
+ metrics.key$pct_odonata &lt;- (pct_odonata$sum / sample_sum$sample_sum )*100  
   
-  metrics.key$hbi &lt;- taxa_tol_index(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  tol.col = bibi_tv)
+# pct_pisciforma  
+pct_pisciforma &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(suborder)) %&gt;% 
+ summarise(sum = sum(reporting_value[suborder %in% c(&quot;pisciforma&quot;)]))  
+ metrics.key$pct_pisciforma &lt;- (pct_pisciforma$sum / sample_sum$sample_sum )*100  
+
+# pct_predator  
+pct_predator &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(ffg)) %&gt;% 
+ summarise(sum = sum(reporting_value[ffg %in% c(&quot;predator&quot;)]))  
+ metrics.key$pct_predator &lt;- (pct_predator$sum / sample_sum$sample_sum )*100  
   
-  metrics.key$pct_arthropoda &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = phylum,
-  taxon = &quot;arthropoda&quot;) 
-  
-  metrics.key$pct_burrow &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = habit, 
-  taxon = &quot;burrow&quot;)
+# pct_pterygota  
+pct_pterygota &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(subclass)) %&gt;% 
+ summarise(sum = sum(reporting_value[subclass %in% c(&quot;pterygota&quot;)]))  
+ metrics.key$pct_pterygota &lt;- (pct_pterygota$sum / sample_sum$sample_sum )*100 
 
-  metrics.key$pct_chironomidae &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = family,
-  taxon = &quot;chironomidae&quot;)
+# pct_retreat_caddisfly  
+pct_retreat_caddisfly &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(suborder)) %&gt;% 
+ summarise(sum = sum(reporting_value[suborder %in% c(&quot;annulipalpia&quot;)]))  
+ metrics.key$pct_retreat_caddisfly &lt;- (pct_retreat_caddisfly$sum / sample_sum$sample_sum )*100 
 
-  metrics.key$pct_cling &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = habit,
-  taxon = &quot;cling&quot;)  
+# pct_scrape   
+pct_scrape &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(ffg)) %&gt;% 
+ summarise(sum = sum(reporting_value[ffg %in% c(&quot;scrape&quot;)]))  
+ metrics.key$pct_scrape &lt;- (pct_scrape$sum / sample_sum$sample_sum )*100 
+   
+# pct_sprawl   
+pct_sprawl &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(habit)) %&gt;% 
+ summarise(sum = sum(reporting_value[habit %in% c(&quot;sprawl&quot;)]))  
+ metrics.key$pct_sprawl &lt;- (pct_sprawl$sum / sample_sum$sample_sum )*100 
 
-  metrics.key$pct_burrow &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = habit,
-  taxon = &quot;burrow&quot;) 
+# pct_systellognatha   
+pct_systellognatha &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(suborder)) %&gt;% 
+ summarise(sum = sum(reporting_value[suborder %in% c(&quot;systellognatha&quot;)]))  
+ metrics.key$pct_systellognatha &lt;- (pct_systellognatha$sum / sample_sum$sample_sum )*100 
 
-  metrics.key$pct_collect &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = ffg,
-  taxon = c(&quot;filter&quot;, &quot;gather&quot;))
-
-  metrics.key$pct_cote &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = order,
-  taxon = c(&quot;coleoptera&quot;,
-            &quot;odonata&quot;,
-            &quot;trichoptera&quot;,
-            &quot;ephemeroptera&quot;))
-
-  metrics.key$pct_ephemeroptera &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = order,
-  taxon = &quot;ephemeroptera&quot;)
-
-  metrics.key$pct_baetidae &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = family,
-  taxon = &quot;baetidae&quot;)
-
-  metrics.key$pct_ephemeroptera_no_baetid &lt;- metrics.key$pct_ephemeroptera - metrics.key$pct_baetidae
-
-  metrics.key$pct_ept &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = order,
-  taxon = c(&quot;ephemeroptera&quot;,
-            &quot;plecoptera&quot;,
-            &quot;trichoptera&quot;))
-
-  metrics.key$pct_hydropsychidae &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = family,
-  taxon = &quot;hydropsychidae&quot;)
-
-  metrics.key$pct_ept_no_hydro &lt;- metrics.key$pct_ept - metrics.key$pct_hydropsychidae
-
-  metrics.key$pct_euholognatha &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = suborder,
-  taxon = &quot;euholognatha&quot;)
-
-  metrics.key$pct_filter &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = ffg,
-  taxon = &quot;filter&quot;)  
-
-  metrics.key$pct_heptageniidae &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = family,
-  taxon = &quot;heptageniidae&quot;)
-
-  metrics.key$pct_hexapoda &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = subphylum,
-  taxon = &quot;hexapoda&quot;)
-
-  metrics.key$pct_hydro_ept &lt;- ifelse(metrics.key$pct_ept == 0, 0, (metrics.key$pct_hydropsychidae / metrics.key$pct_ept) * 100)
-  
-  metrics.key$pct_intol_0_3 &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = bibi_tv,
-  taxon = 0:3)
-
-  metrics.key$pct_intol_0_4 &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = bibi_tv,
-  taxon = 0:4)
-
-  metrics.key$pct_amph_iso &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = order,
-  taxon = c(&quot;amphipoda&quot;, &quot;isopoda&quot;))
-
-  metrics.key$pct_ephemerellidae &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = family,
-  taxon = &quot;ephemerellidae&quot;)
-
-  metrics.key$pct_limestone &lt;- metrics.key$pct_amph_iso + metrics.key$pct_ephemerellidae
-
-  metrics.key$pct_mod_tol_4_6 &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = bibi_tv,
-  taxon = 4:6)
-
-  metrics.key$pct_trichoptera &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = order,
-  taxon = &quot;trichoptera&quot;)
-
-  metrics.key$pct_non_hydrop_trichoptera &lt;- metrics.key$pct_trichoptera - metrics.key$pct_hydropsychidae
-
-  metrics.key$pct_odonata &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = order,
-  taxon = &quot;odonata&quot;)
-
-  metrics.key$pct_pisciforma &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = suborder,
-  taxon = &quot;pisciforma&quot;)
-
-  metrics.key$pct_predator &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = ffg,
-  taxon = &quot;predator&quot;) 
-
-  metrics.key$pct_pterygota &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = subclass,
-  taxon = &quot;pterygota&quot;)
-
-  metrics.key$pct_retreat_caddisfly &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = suborder,
-  taxon = &quot;annulipalpia&quot;)
-
-  metrics.key$pct_scrape = taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = ffg,
-  taxon = &quot;scrape&quot;) 
-
-  metrics.key$pct_sprawl &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = habit,
-  taxon = &quot;sprawl&quot;)  
-
-  metrics.key$pct_systellognatha &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = suborder,
-  taxon = &quot;systellognatha&quot;)
-
-  metrics.key$pct_tolerant_7_10 &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = bibi_tv,
-  taxon = 7:10)
-
-  metrics.key$pct_urban_intol &lt;- taxa_pct(
-  long.df = non_rare,
-  unique.id.col = unique_id,
-  count.col = reporting_value,
-  taxon.col = family,
-  taxon = c(
+# pct_tolerant_7_10   
+pct_tolerant_7_10 &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;% 
+ summarise(sum = sum(reporting_value[bibi_tv %in% c(&quot;7&quot;, &quot;8&quot;, &quot;9&quot;, &quot;10&quot;)]))  
+ metrics.key$pct_tolerant_7_10 &lt;- (pct_tolerant_7_10$sum / sample_sum$sample_sum )*100 
+# pct_urban_intol   
+pct_urban_intol &lt;- non_rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(family)) %&gt;% 
+ summarise(sum = sum(reporting_value[family %in% c(
     &quot;aeshnidae&quot;,
     &quot;ameletidae&quot;,
     &quot;asellidae&quot;,
@@ -776,151 +789,312 @@ rare &lt;- taxa.df %&gt;%
     &quot;taeniopterygidae&quot;,
     &quot;tipulidae&quot;,
     &quot;uenoidae&quot;,
-    &quot;viviparidae&quot;))
+    &quot;viviparidae&quot;)]))  
+  metrics.key$pct_urban_intol &lt;- (pct_urban_intol$sum / sample_sum$sample_sum )*100 
+
+# Richness/Diversity metrics require rarefied data
+# Calculate family-level taxa richness for each unique_id
+family_richness &lt;- rare %&gt;%
+ group_by(unique_id) %&gt;%
+ summarise(family_richness = n_distinct(family)) 
+
+# Margalefs
+margalefs_numerator &lt;- family_richness %&gt;%
+ mutate(family_richness = family_richness - 1)
+
+margalefs_denominator &lt;- rare %&gt;%
+ group_by(unique_id) %&gt;%
+ summarise(sample_sum = log(sum(rare_count)))
+
+metrics.key$margalefs &lt;- margalefs_numerator$family_richness / margalefs_denominator$sample_sum
+
+# pct_ept_rich
+pct_ept_rich &lt;- rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(order)) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;%
+ filter(order %in% c(&quot;ephemeroptera&quot;, &quot;plecoptera&quot;, &quot;trichoptera&quot;)) %&gt;%
+ summarise(rich_ept = n_distinct(family))
+ pct_ept_rich2 &lt;- merge(pct_ept_rich, family_richness, by= &quot;unique_id&quot;, all=TRUE)
+ pct_ept_rich2[is.na(pct_ept_rich2)] &lt;- 0
+ metrics.key$pct_ept_rich &lt;- (pct_ept_rich2$rich_ept / pct_ept_rich2$family_richness)*100
+    
+# pct_ept_rich_no_tol    
+pct_ept_rich_no_tol &lt;- rare %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(order)) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;%
+ filter(order %in% c(&quot;ephemeroptera&quot;, &quot;plecoptera&quot;, &quot;trichoptera&quot;)) %&gt;%
+ filter(bibi_tv %in% c(&quot;0&quot;,&quot;1&quot;,&quot;2&quot;,&quot;3&quot;,&quot;4&quot;,&quot;5&quot;,&quot;6&quot;)) %&gt;%
+ summarise(rich_ept_no_tol = n_distinct(family))
+ pct_ept_rich_no_tol2 &lt;- merge(pct_ept_rich_no_tol, family_richness, by= &quot;unique_id&quot;, all=TRUE)
+ pct_ept_rich_no_tol2[is.na(pct_ept_rich_no_tol2)] &lt;- 0
+ metrics.key$pct_ept_rich_no_tol &lt;- (pct_ept_rich_no_tol2$rich_ept_no_tol / pct_ept_rich_no_tol2$family_richness)*100  
+
+# Pielou
+pielou_shannon &lt;- rare %&gt;%
+ group_by(unique_id) %&gt;%
+ summarise(shannon = shannon(taxon = family, count= rare_count))
+
+pielou_taxa_rich &lt;- family_richness %&gt;%
+ mutate(family_richness = log(family_richness))
+
+metrics.key$pielou &lt;- pielou_shannon$shannon / pielou_taxa_rich$family_richness
   
-# Richness/Diversity metrics require rarefied data, so switch the long.df from non_rare to rare.
+# rich_burrow  
+rich_burrow &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(habit)) %&gt;%
+ filter(habit %in% c(&quot;burrow&quot;)) %&gt;%
+ summarise(rich_burrow = n_distinct(family)) %&gt;%
+ select(unique_id, rich_burrow) 
+ metrics.key &lt;- merge(metrics.key, rich_burrow, by=&quot;unique_id&quot;, all=TRUE)
+ metrics.key$rich_burrow[is.na(metrics.key$rich_burrow)] &lt;- 0
   
-  metrics.key$margalefs = taxa_div(
-  long.df = rare,
-  unique.id.col = unique_id,
-  count.col = rare_count, 
-  high.taxa.col = family,
-  job = &quot;margalef&quot;)
+# rich_climb
+rich_climb &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(habit)) %&gt;%
+ filter(habit %in% c(&quot;climb&quot;)) %&gt;%
+ summarise(rich_climb = n_distinct(family)) %&gt;%
+ select(unique_id, rich_climb) 
+ metrics.key &lt;- merge(metrics.key, rich_climb, by=&quot;unique_id&quot;, all=TRUE)
+ metrics.key$rich_climb[is.na(metrics.key$rich_climb)] &lt;- 0
   
-  taxa_count &lt;- rare %&gt;%
-    group_by(unique_id) %&gt;%
-     filter(!is.na(bibi_tv)) %&gt;%
-      count(unique_id) 
-    ept_count &lt;- rare %&gt;%
-      group_by(unique_id) %&gt;%
-       filter(!is.na(bibi_tv)) %&gt;% 
-        tally(order %in% c(&quot;ephemeroptera&quot;, &quot;plecoptera&quot;, &quot;trichoptera&quot;))
-    metrics.key$pct_ept_rich &lt;- (ept_count$n / taxa_count$n)*100
+# rich_cling 
+rich_cling &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(habit)) %&gt;%
+ filter(habit %in% c(&quot;cling&quot;)) %&gt;%
+ summarise(rich_cling = n_distinct(family)) %&gt;%
+ select(unique_id, rich_cling) 
+ metrics.key &lt;- merge(metrics.key, rich_cling, by=&quot;unique_id&quot;, all=TRUE)
+ metrics.key$rich_cling[is.na(metrics.key$rich_cling)] &lt;- 0
+ 
+# rich_collect_filter    
+rich_collect_filter &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(ffg)) %&gt;%
+ filter(ffg %in% c(&quot;filter&quot;)) %&gt;%
+ summarise(rich_collect_filter = n_distinct(family)) %&gt;%
+ select(unique_id, rich_collect_filter)
+ 
+rich_collect_gather &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(ffg)) %&gt;%
+ filter(ffg %in% c(&quot;gather&quot;)) %&gt;%
+ summarise(rich_collect_gather = n_distinct(family)) %&gt;%
+ select(unique_id, rich_collect_gather)
+ rich_collect &lt;- merge(rich_collect_filter, rich_collect_gather, by = &quot;unique_id&quot;, all=TRUE)
+ rich_collect[is.na(rich_collect)] &lt;- 0  
+ rich_collect$rich_collect &lt;- rich_collect$rich_collect_filter + rich_collect$rich_collect_gather
+ rich_collect$rich_collect_gather &lt;- NULL
+ rich_collect$rich_collect_filter &lt;- NULL
+ metrics.key &lt;- merge(metrics.key, rich_collect, by = &quot;unique_id&quot;, all=TRUE)
+   
+# rich_ephemeroptera     
+rich_ephemeroptera &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(order)) %&gt;%
+ filter(order %in% c(&quot;ephemeroptera&quot;)) %&gt;%
+ summarise(rich_ephemeroptera = n_distinct(family)) %&gt;%
+ select(unique_id, rich_ephemeroptera) 
+ metrics.key &lt;- merge(metrics.key, rich_ephemeroptera, by = &quot;unique_id&quot;, all=TRUE)
+ metrics.key[is.na(metrics.key)] &lt;- 0
+     
+# rich_ept    
+rich_ept &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(order)) %&gt;%
+ filter(order %in% c(&quot;ephemeroptera&quot;, &quot;plecoptera&quot;, &quot;trichoptera&quot;)) %&gt;%
+ summarise(rich_ept = n_distinct(family)) %&gt;%
+ select(unique_id, rich_ept) 
+ metrics.key &lt;- merge(metrics.key, rich_ept, by = &quot;unique_id&quot;, all=TRUE)
+ metrics.key[is.na(metrics.key)] &lt;- 0   
+ 
+# rich_filter    
+rich_filter &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(ffg)) %&gt;%
+ filter(ffg %in% c(&quot;filter&quot;)) %&gt;%
+ summarise(rich_filter = n_distinct(family)) %&gt;%
+ select(unique_id, rich_filter) 
+ metrics.key &lt;- merge(metrics.key, rich_filter, by = &quot;unique_id&quot;, all=TRUE)
+ metrics.key[is.na(metrics.key)] &lt;- 0   
+
+# rich_gather    
+rich_gather &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(ffg)) %&gt;%
+ filter(ffg %in% c(&quot;gather&quot;)) %&gt;%
+ summarise(rich_gather = n_distinct(family)) %&gt;%
+ select(unique_id, rich_gather) 
+ metrics.key &lt;- merge(metrics.key, rich_gather, by = &quot;unique_id&quot;, all=TRUE)
+ metrics.key[is.na(metrics.key)] &lt;- 0   
+
+# rich_intol 
+rich_intol0 &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;%
+ filter(bibi_tv %in% c(&quot;0&quot;)) %&gt;%
+ summarise(rich_intol0 = n_distinct(family)) %&gt;%
+ select(unique_id, rich_intol0)
+
+rich_intol1 &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;%
+ filter(bibi_tv %in% c(&quot;1&quot;)) %&gt;%
+ summarise(rich_intol1 = n_distinct(family)) %&gt;%
+ select(unique_id, rich_intol1)
+
+rich_intol2 &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;%
+ filter(bibi_tv %in% c(&quot;2&quot;)) %&gt;%
+ summarise(rich_intol2 = n_distinct(family)) %&gt;%
+ select(unique_id, rich_intol2)
+
+rich_intol3 &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;%
+ filter(bibi_tv %in% c(&quot;3&quot;)) %&gt;%
+ summarise(rich_intol3 = n_distinct(family)) %&gt;%
+ select(unique_id, rich_intol3)
+ rich_intol01 &lt;- merge(rich_intol0, rich_intol1, by= &quot;unique_id&quot;, all=TRUE)
+ rich_intol01[is.na(rich_intol01)] &lt;- 0
+ rich_intol012 &lt;- merge(rich_intol01, rich_intol2, by= &quot;unique_id&quot;, all=TRUE)
+ rich_intol012[is.na(rich_intol012)] &lt;- 0
+ rich_intol0123 &lt;- merge(rich_intol012, rich_intol3, by= &quot;unique_id&quot;, all=TRUE)
+ rich_intol0123[is.na(rich_intol0123)] &lt;- 0
+ rich_intol0123$rich_intol &lt;- rich_intol0123$rich_intol0 + rich_intol0123$rich_intol1 + rich_intol0123$rich_intol2 + rich_intol0123$rich_intol3
+ 
+rich_intol0123 &lt;- rich_intol0123 %&gt;%
+ select(unique_id, rich_intol)
+ metrics.key &lt;- merge(metrics.key, rich_intol0123, by = &quot;unique_id&quot;, all=TRUE)
+ metrics.key[is.na(metrics.key)] &lt;- 0   
+
+# rich_modtol  
+rich_modtol4 &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;%
+ filter(bibi_tv %in% c(&quot;4&quot;)) %&gt;%
+ summarise(rich_modtol4 = n_distinct(family)) %&gt;%
+ select(unique_id, rich_modtol4)
+
+rich_modtol5 &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;%
+ filter(bibi_tv %in% c(&quot;5&quot;)) %&gt;%
+ summarise(rich_modtol5 = n_distinct(family)) %&gt;%
+ select(unique_id, rich_modtol5)
+
+rich_modtol6 &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;%
+ filter(bibi_tv %in% c(&quot;6&quot;)) %&gt;%
+ summarise(rich_modtol6 = n_distinct(family)) %&gt;%
+ select(unique_id, rich_modtol6)
+ rich_modtol45 &lt;- merge(rich_modtol4, rich_modtol5, by= &quot;unique_id&quot;, all=TRUE)
+ rich_modtol45[is.na(rich_modtol45)] &lt;- 0
+ rich_modtol456 &lt;- merge(rich_modtol45, rich_modtol6, by= &quot;unique_id&quot;, all=TRUE)
+ rich_modtol456[is.na(rich_modtol456)] &lt;- 0
+ rich_modtol456$rich_modtol &lt;- rich_modtol456$rich_modtol4 + rich_modtol456$rich_modtol5 + rich_modtol456$rich_modtol6
+ 
+ rich_modtol456 &lt;- rich_modtol456 %&gt;%
+ select(unique_id, rich_modtol)
+ metrics.key &lt;- merge(metrics.key, rich_modtol456, by = &quot;unique_id&quot;, all=TRUE)
+ metrics.key[is.na(metrics.key)] &lt;- 0  
   
-  ept_no_tol_count &lt;- rare %&gt;%
-    group_by(unique_id) %&gt;%
-     filter(!is.na(bibi_tv)) %&gt;% 
-      tally(order %in% c(&quot;ephemeroptera&quot;, &quot;plecoptera&quot;, &quot;trichoptera&quot;) &amp; bibi_tv %in% c(&quot;0&quot;,&quot;1&quot;,&quot;2&quot;,&quot;3&quot;,&quot;4&quot;,&quot;5&quot;,&quot;6&quot;))
-    metrics.key$pct_ept_rich_no_tol &lt;- (ept_no_tol_count$n/taxa_count$n)*100
-  
-  metrics.key$pielou &lt;- taxa_div(
-  long.df = rare,
-  unique.id.col = unique_id,
-  count.col = rare_count, 
-  high.taxa.col = family,
-  job = &quot;pielou&quot;)
-  
-  metrics.key$rich_burrow &lt;- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = habit,
-  high.taxa.col = family,
-  taxon = &quot;burrow&quot;)  
+# rich_plecoptera  
+rich_plecoptera &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(order)) %&gt;%
+ filter(order %in% c(&quot;plecoptera&quot;)) %&gt;%
+ summarise(rich_plecoptera = n_distinct(family)) %&gt;%
+ select(unique_id, rich_plecoptera) 
+ metrics.key &lt;- merge(metrics.key, rich_plecoptera, by = &quot;unique_id&quot;, all=TRUE)
+ metrics.key[is.na(metrics.key)] &lt;- 0  
 
-  metrics.key$rich_climb &lt;- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = habit,
-  high.taxa.col = family,
-  taxon = &quot;climb&quot;)  
+# rich_predator    
+rich_predator &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(ffg)) %&gt;%
+ filter(ffg %in% c(&quot;predator&quot;)) %&gt;%
+ summarise(rich_predator = n_distinct(family)) %&gt;%
+ select(unique_id, rich_predator) 
+ metrics.key &lt;- merge(metrics.key, rich_predator, by = &quot;unique_id&quot;, all=TRUE)
+ metrics.key[is.na(metrics.key)] &lt;- 0 
+ 
+# rich_shred    
+rich_shred &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(ffg)) %&gt;%
+ filter(ffg %in% c(&quot;shred&quot;)) %&gt;%
+ summarise(rich_shred = n_distinct(family)) %&gt;%
+ select(unique_id, rich_shred) 
+ metrics.key &lt;- merge(metrics.key, rich_shred, by = &quot;unique_id&quot;, all=TRUE)
+ metrics.key[is.na(metrics.key)] &lt;- 0 
 
-  metrics.key$rich_cling &lt;- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = habit,
-  high.taxa.col = family,
-  taxon = &quot;cling&quot;)  
+# rich_sprawl    
+rich_sprawl &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(habit)) %&gt;%
+ filter(habit %in% c(&quot;sprawl&quot;)) %&gt;%
+ summarise(rich_sprawl = n_distinct(family)) %&gt;%
+ select(unique_id, rich_sprawl) 
+ metrics.key &lt;- merge(metrics.key, rich_sprawl, by = &quot;unique_id&quot;, all=TRUE)
+ metrics.key[is.na(metrics.key)] &lt;- 0 
+    
+# rich_tol    
+rich_tol7 &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;%
+ filter(bibi_tv %in% c(&quot;7&quot;)) %&gt;%
+ summarise(rich_tol7 = n_distinct(family)) %&gt;%
+ select(unique_id, rich_tol7)
 
-  metrics.key$rich_collect &lt;- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = ffg,
-  high.taxa.col = family,
-  taxon = c(&quot;filter&quot;, &quot;gather&quot;))
+rich_tol8 &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;%
+ filter(bibi_tv %in% c(&quot;8&quot;)) %&gt;%
+ summarise(rich_tol8 = n_distinct(family)) %&gt;%
+ select(unique_id, rich_tol8)
 
-  metrics.key$rich_ephemeroptera &lt;- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = order,
-  high.taxa.col = family,
-  taxon = &quot;ephemeroptera&quot;)
+rich_tol9 &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;%
+ filter(bibi_tv %in% c(&quot;9&quot;)) %&gt;%
+ summarise(rich_tol9 = n_distinct(family)) %&gt;%
+ select(unique_id, rich_tol9)
 
-  metrics.key$rich_ept &lt;- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = order,
-  high.taxa.col = family, 
-  taxon = c(&quot;ephemeroptera&quot;, &quot;plecoptera&quot;, &quot;trichoptera&quot;))
-
-  metrics.key$rich_filter &lt;- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = ffg,
-  high.taxa.col = family,
-  taxon = &quot;filter&quot;)
-
-  metrics.key$rich_gather &lt;- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = ffg,
-  high.taxa.col = family,
-  taxon = &quot;gather&quot;) 
-
-  metrics.key$rich_intol &lt;- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = bibi_tv,
-  high.taxa.col = family,
-  taxon = 0:3)
-
-  metrics.key$rich_modtol &lt;- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = bibi_tv,
-  high.taxa.col = family,
-  taxon = 4:6)
-
-  metrics.key$rich_plecoptera &lt;- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = order,
-  high.taxa.col = family,
-  taxon = &quot;plecoptera&quot;)
-
-  metrics.key$rich_predator &lt;- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = ffg,
-  high.taxa.col = family,
-  taxon = &quot;predator&quot;)  
-
-  metrics.key$rich_shred &lt;- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = ffg,
-  high.taxa.col = family,
-  taxon = &quot;shred&quot;)   
-
-  metrics.key$rich_sprawl &lt;- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = habit,
-  high.taxa.col = family,
-  taxon = &quot;sprawl&quot;)  
-
-  metrics.key$rich_tol &lt;- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = bibi_tv,
-  high.taxa.col = family,
-  taxon = 7:10)
-
-  metrics.key$rich_trichoptera &lt;- taxa_rich(
-  long.df = rare,
-  unique.id.col = unique_id,
-  low.taxa.col = order,
-  high.taxa.col = family,
-  taxon = &quot;trichoptera&quot;)</code></pre>
+rich_tol10 &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(bibi_tv)) %&gt;%
+ filter(bibi_tv %in% c(&quot;10&quot;)) %&gt;%
+ summarise(rich_tol10 = n_distinct(family)) %&gt;%
+ select(unique_id, rich_tol10)
+ rich_tol78 &lt;- merge(rich_tol7, rich_tol8, by= &quot;unique_id&quot;, all=TRUE)
+ rich_tol78[is.na(rich_tol78)] &lt;- 0
+ rich_tol789 &lt;- merge(rich_tol78, rich_tol9, by= &quot;unique_id&quot;, all=TRUE)
+ rich_tol789[is.na(rich_tol789)] &lt;- 0
+ rich_tol78910 &lt;- merge(rich_tol789, rich_tol10, by= &quot;unique_id&quot;, all=TRUE)
+ rich_tol78910[is.na(rich_tol78910)] &lt;- 0
+ rich_tol78910$rich_tol &lt;- rich_tol78910$rich_tol7 + rich_tol78910$rich_tol8 + rich_tol78910$rich_tol9 + rich_tol78910$rich_tol10
+ 
+rich_tol78910 &lt;- rich_tol78910 %&gt;%
+ select(unique_id, rich_tol)
+ metrics.key &lt;- merge(metrics.key, rich_tol78910, by = &quot;unique_id&quot;, all=TRUE)
+ metrics.key[is.na(metrics.key)] &lt;- 0   
+    
+# rich_trichoptera  
+rich_trichoptera &lt;- rare  %&gt;%
+ group_by(unique_id) %&gt;%
+ filter(!is.na(order)) %&gt;%
+ filter(order %in% c(&quot;trichoptera&quot;)) %&gt;%
+ summarise(rich_trichoptera = n_distinct(family)) %&gt;%
+ select(unique_id, rich_trichoptera) 
+ metrics.key &lt;- merge(metrics.key, rich_trichoptera, by = &quot;unique_id&quot;, all=TRUE)
+ metrics.key[is.na(metrics.key)] &lt;- 0 </code></pre>
 <p>To download metrics.key as a csv, run the following script. The csv will be stored in the working directory that you have set up.</p>
 <pre class="r"><code>write.csv(metrics.key, file= &quot;name_of_file.csv&quot;)</code></pre>
 </div>
@@ -2236,7 +2410,7 @@ bibi_ratings_combined &lt;- rbind(bind10, PIED_sub)</code></pre>
                         scale_fill_manual(name = &quot;Rating&quot;,
                         labels = c(&quot;Excellent&quot;, &quot;Good&quot;, &quot;Fair&quot;, &quot;Poor&quot;, &quot;Very poor&quot;),
                         values = c(&quot;excellent&quot; = &quot;darkgreen&quot;, &quot;good&quot; = &quot;green3&quot;, &quot;fair&quot; = &quot;yellow2&quot;, &quot;poor&quot; = &quot;orange2&quot;, &quot;very_poor&quot; = &quot;red3&quot;))  </code></pre>
-<p><img src="data:image/png;base64,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tQISfXd0QQLQmLsDQPupcc7Sk5/OZq+/t7z+CUDtgETfHV2QADTm7gDQgAKg0wWJztFW3gFGSLfoAFCRAKh/VHWONpgMQOWWAfqtW3QAqEgA1D+qOkcAGrMlAJXnDUADCIAC0CgtAag8bwAaQAAUgEZpCUDleQPQAAKgADRKSwAqzxuABhAABaBRWgJQed4ANIAAKACN0hKAyvMGoAFkDqC/1wmARmwJQOV5A9AAAqAANEpLACrPG4AGEAAFoFFaAlB53gA0gAAoAI3SEoDK8wagAQRAAWiUlgBUnjcADSAACkCjtASg8rwBaAABUAAapSUAlecNQAMIgALQKC0BqDxvABpAABSARmkJQOV5A9AAAqAANEpLACrPG4AGEAAFoFFaAlB53gA0gAAoAI3SEoDK8wagAQRAAWiUlgBUnjcADSAACkCjtASg8rwBaAABUAAapSUAlecNQAMIgALQKC0BqDxvABpAABSARmkJQOV5A9AAAqAANEpLACrPG4AGEAAFoFFaBsw7wAjpFh0AKhIA9aMpwPTrggSgckcAKssbgAYQAAWgUVoCUHneADSAACgAjdISgMrzBqABBEABaJSWAFSeNwANIAAKQKO0BKDyvAFoAAFQABqlJQCV5w1AAwiAAtAoLQGoPG8AGkAAFIBGaQlA5XkD0AACoAA0SksAKs8bgAYQAAWgUVoCUHneADSAACgAjdISgMrzBqAB5NY2QMv0aAow/bogAajcEYDK8gagAQRAAWiUlgBUnjcADSAACkCjtASg8pyiZYwAACAASURBVLwBaAABUAAapSUAlecNQAMIgALQKC0BqDxvABpAABSARmkJQOV59wDoQVJp78w7d05684snvGNMAVA/mgJMvy5IACp3BKCyvIcBNGXox/533frnd/I3A1B1y/RoCjD9uiABqNwRgMryHgzQ5IWv/W96EYACUGmUAUqpt9Q5AtCdBWjFzEef7yfJOf+bYgJnKQDqR1OA6dcFCUDljgBUlvcwgM7nR4mflAAUgKqjDFBKvaXOEYBOAaBPLwDQlgAoAI3SEoDK89YB9Nvri835JD8sf5jvHj1XgnTxrnPHn7+cJKeqo/a330qSvdfuHK7YhxpGANSPpgDTrwsSgModAags76EAvVVswh9/Wh5UOv21F6B/crF+efH2a8URqOsAtHPL9GgKMP26IAGo3BGA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" width="672" /> ####<strong>6.3</strong> Create a pie chart of the combined ratings from each bioregion using base R. Percentages of each rating category need to be hand-entered from <em>pie_total</em> into <code>slices</code>, in order from Excellent to Very Poor.</p>
+<p><img src="data:image/png;base64,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vaXO0VbdybYQANULgFrpfr2lztFW3cm2EADVC4Ba6X69pc7RVt3JthAA1QuAWul+vaXO0VbdybYQANULgFrpfr2lztFW3cm2EADVC4Ba6X69pc7RVt3JthAA1QuAWul+vaXO0VbdybYQANULgFrpfr2lztFW3cm2EADVC4Ba6X69pc7RVt3JthAA1QuAWul+vaXO0VbdybYQANULgFrpfr2lztFW3cm2EADVC4Ba6X69pc7RVt3JthAA1QuAWul+vaXO0VbdybYQANULgFrpfr2lztFW3cm2EADVC4Ba6X69pc7RVt3JthAA1QuAWul+vaXO0VbdybYQANULgFrpfr2lztFW3cm2EADVC4Ba6X69pc7RVt3JthAA1QuAWul+vaXO0VbdybYQANULgFrpfr2lztFW3cm2EADVC4Ba6X69pc7RVt3JthAA1QuAWul+vaXO0VbdybYQANULgFrpfr2lztFW3cm2EADVC4Ba6X69pc7RVt3JthAA1QuAWul+vaXO0VbdybYQANULgFrpfr2lztFW3cm2EADVC4Ba6X69pc7RVt3JthAA1QuAWul+vaXO0VbdybYQANULgFrpfr2lztFW3cm2EADVC4Ba6X69pc7RVt3JthAA1QuAWul+vaXO0VbdybYQANULgFrpfr2lztFW3cm2EADVC4Ba6X69pc7RVt3JthAA1QuAWul+vaXO0VbdybYQANULgFrpfr2lztFW3cm2EADVC4Ba6X69pc7RVt3JthAA1QuAWul+vaXO0VbdybYQANULgFrpfr2lztFW3cm2EADVC4Ba6X69pc7RVt3JthAA1QuAWul+vaXO0VbdybYQANULgFrpfr2lztFW3cm2EADVC4Ba6X69pc7RVt3JthAA1QuAWul+vaXO0VbdybYQANULgFrpfr2lztFW3cm2EADVC4Ba6X69pc7RVt3JthAA1QuAWul+vaXO0VbdybYQANULgFrpfr2lztFW3cm2EADVKzBA9a2qczTW/XpLnaOtupNtIQCqFwC10v16S52jrbqTbSEAqhcAtdL9ekudo626k20hAKoXALXS/XpLnaOtupNtIQCqFwC10v16S52jrbqTbSEAqhcAtdL9ekudo626k20hAKoXALXS/XpLnaOtupNtIQCqFwC10v16S52jrbqTbSEAqhcAtdL9ekudo626k20hAKoXALXS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" width="672" /> ####<strong>6.3</strong> Create a pie chart of the combined ratings from each bioregion using base R. Percentages of each rating category need to be hand-entered from <em>pie_total</em> into <code>slices</code>, in order from Excellent to Very Poor.</p>
 <pre class="r"><code>pie_total &lt;- bibi_ratings_combined %&gt;%
   mutate(total = n()) %&gt;% 
   group_by(rating, total) %&gt;% 
