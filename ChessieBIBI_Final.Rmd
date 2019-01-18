@@ -241,16 +241,16 @@ taxa2.df <- taxa.df %>%
   select(unique_id, icprb_bioregion_id, rare_count, final_id, phylum, subphylum, class, subclass, order, suborder, family, subfamily, tribe, genus, habit, ffg, bibi_tv)
 ```
 **Optional:**  
-If you would like to preserve the rarefied data frame created above, export it as a CSV. Don't forget to replace `file= ` with your own file name. 
+If you would like to preserve the rarefied data frame created above, export it as a CSV. The CSV will be stored in the working directory that you have specified. 
 ```{r eval=FALSE}
-write.csv(taxa.df, file= "name_of_file.csv")
+write.csv(taxa.df, file= "taxa.df.csv")
 ```
 ###**2. Calculating the Biological Metrics**  
 Now that the data are in the proper format and the reporting values have been rarefied, the biological metrics can be calculated. The metric formulas are located in Appendix E. Please note that the appendix contains descriptions of all the metrics tested during the development of the Chessie BIBI, so includes several that did not eventually end up as part of the BIBI.     
 
 The scripts below compute all of the metrics included in the Chessie BIBI for each unique sampling event (unique_id). Later on, metrics specific to each bioregion will be selected out.    
 
-The first step is to generate a new data frame for the non-rarefied and rarefied data, both of which are needed because not all metrics calculations require rarefied data. Then, a data frame, **metrics.key**, will be generated. **metrics.key** initially only contains the following columns: unique_id, icprb_bioregion_id, event_latitude, event_longitude, and huc_12, but each calculated metric is appended using the `$` notation; for example `metrics.key$new_column <-`.
+The first step is to generate a new data frame for the non-rarefied and rarefied data, both of which are needed because not all metric calculations require rarefied data. Then, a data frame, **metrics.key**, will be generated. **metrics.key** initially only contains the following columns: unique_id, icprb_bioregion_id, event_latitude, event_longitude, and huc_12, but each calculated metric is appended using the `$` notation; for example `metrics.key$new_column <-`.
 ```{r warning=FALSE, message=FALSE}
 # Create a data frame of the non-rarefied and rarefied data.
 non_rare <- prep.df2 %>%
@@ -262,7 +262,7 @@ rare <- taxa.df %>%
  ungroup()
 
 # If you had exported the rarefied data as a CSV above, read it in at this time using the script below. Don't forget to uncomment the script by removing the #. 
-# read.csv("name_of_file.csv")
+# taxa.df <- read.csv("taxa.df.csv")
 
 # Create the metrics.key data frame.
 metrics.key <- non_rare %>%              
@@ -597,7 +597,7 @@ pct_urban_intol <- non_rare %>%
     "viviparidae")]))  
   metrics.key$pct_urban_intol <- (pct_urban_intol$sum / sample_sum$sample_sum )*100 
 
-# Richness/Diversity metrics require rarefied data
+# Richness and diversity metrics require rarefied data
 # Calculate family-level taxa richness for each unique_id
 family_richness <- rare %>%
  group_by(unique_id) %>%
@@ -901,13 +901,13 @@ rich_trichoptera <- rare  %>%
  metrics.key <- merge(metrics.key, rich_trichoptera, by = "unique_id", all=TRUE)
  metrics.key[is.na(metrics.key)] <- 0 
 ```
-To download metrics.key as a CSV, run the following script. The CSV will be stored in the working directory that you have set up. Don't forget to replace `file= ` with your own file name.
+To download metrics.key as a CSV, run the following script. The CSV will be stored in the working directory that you have specified. Don't forget to replace `file= ` with your own file name.
 ```{r eval=FALSE}
 write.csv(metrics.key, file= "name_of_file.csv")
 ```
 ###**3. Metric Scoring**  
 ####**3.1**
-Subset **metrics.key** by bioregion, creating a new data frame for each of the twelve bioregions.
+Subset **metrics.key** by bioregion to create twelve new data frames.
 ```{r}
 NAPU <- metrics.key %>% filter(icprb_bioregion_id == "napu")
 NCA <- metrics.key %>% filter(icprb_bioregion_id == "nca")
@@ -923,7 +923,7 @@ LNP <- metrics.key %>% filter(icprb_bioregion_id == "lnp")
 PIED <- metrics.key %>% filter(icprb_bioregion_id == "pied")
 ```
 ####**3.2**
-Create a data frame that contains the names of metrics specific to each of the twelve bioregions. A list of the metrics in each bioregion can be found in Table 15, Page 44 of the Final Report. One change has been made from the original list of metrics: pct_predator was removed from NAPU, as it was deemed unnecessary.  
+Create a data frame for each of the twelve bioregions that contains only the metrics specific to that bioregion. A list of the metrics used for each bioregion can be found in Table 15, Page 44 of the Final Report. One change has been made from the original list of metrics: pct_predator was removed from NAPU, as it was deemed unnecessary.  
 ```{r}
 #Northern Appalachian Plateau and Uplands (NAPU)
 NAPU_score <- NAPU %>%
@@ -1176,9 +1176,9 @@ PIED_score <- PIED %>%
     "rich_trichoptera")
 ```
 ####**3.3**
-Score the metrics. This was done using the following steps:  
+Score the metrics using the approach described on pages 20-21 in the Final Report and outlined below:    
 
-1. Scroll to Final Report Table 15, Page 44. This table can also be [downloaded](https://www.potomacriver.org/wp-content/uploads/2014/12/metric_thresholds_06292017.csv) from the ICPRB website, but it will need to be filtered so that it only contains bioregion and family data.  
+1. Go to Final Report Table 15, Page 44. This table can also be [downloaded](https://www.potomacriver.org/wp-content/uploads/2014/12/metric_thresholds_06292017.csv) from the ICPRB website, but it will need to be filtered so that it only contains bioregion and family data.  
 
 2. Use the *Influence of Disturbance* column in that table to determine whether a given metric increases or decreases with disturbance.  
 
@@ -2053,9 +2053,7 @@ PIED_score$score_rich_trichoptera <-
 ###**4. Calculating the CHESSIE BIBI**  
 Average the metric score columns for each unique_id with `rowMeans` and `[row,column]`. In `[row,column]`, 'row' is left blank, indicating that all rows are to be used, and 'column' has the range of column numbers containing scores. If you added or removed columns, you will need to adjust the column ranges.  
 
-`na.rm = T` excludes any cells that contain an NA from the calculation.      
-
-The resulting mean value is the Chessie BIBI. It is assigned using `bioregion_score$chessie_bibi <-` and outputted in a column called *chessie_bibi*.  
+The resulting mean value is the Chessie BIBI for each unique_id, and it is located in a new column called *chessie_bibi*, assigned using `bioregion_score$chessie_bibi <-`.
 ```{r}
 NAPU_score$chessie_bibi <- rowMeans(NAPU_score[ ,25:43], na.rm = T)
 NCA_score$chessie_bibi  <- rowMeans(NCA_score[ ,15:23], na.rm = T)
@@ -2071,7 +2069,7 @@ LNP_score$chessie_bibi  <- rowMeans(LNP_score[ ,15:23], na.rm = T)
 PIED_score$chessie_bibi <- rowMeans(PIED_score[ ,14:21], na.rm = T) 
 ```
 ###**5. Assigning Narrative Ratings** 
-Use Table 5, Final Report Page 27 to access the values used to assign narrative ratings of Excellent, Very Good, Fair, Poor, or Very Poor to the Chessie BIBI value. The values are different in the various bioregions. 
+Use Table 5, Final Report Page 27 to assign narrative ratings of Excellent, Very Good, Fair, Poor, or Very Poor to the Chessie BIBI values.
 ```{r}
 NAPU_score$rating <-
   case_when(
@@ -2210,7 +2208,7 @@ bind9 <- rbind(bind8, SGV_sub)
 bind10 <- rbind(bind9, LNP_sub)
 bibi_ratings_combined <- rbind(bind10, PIED_sub)
 ```
-To download a CSV of the Chessie BIBI ratings of all bioregions, use the following script. Don't forget to replace `file= ` with your own file name.
+To download a CSV of the Chessie BIBI ratings of all bioregions, use the following script. The CSV will be stored in the working directory that you have specified. Don't forget to replace `file= ` with your own file name.
 ```{r eval=FALSE}
 write.csv(bibi_ratings_combined, file= "name_of_file.csv")
 ```
