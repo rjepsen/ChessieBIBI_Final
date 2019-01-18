@@ -231,15 +231,15 @@ div.tocify {
 </div>
 <div id="before-you-get-started" class="section level3">
 <h3><strong>Before You Get Started</strong></h3>
-<p>The initial setup of the data tables, installation of the custom packages, and establishing the ODBC connection to the database will likely require a decent input of time. Once, however, this is accomplished, running the scripts should be a fairly quick process.</p>
-<p>In order to implement the following R scripts, RStudio must be installed. If RStudio is not installed, it can be downloaded for free from <a href="https://www.rstudio.com/" class="uri">https://www.rstudio.com/</a>. This <a href="https://courses.edx.org/courses/UTAustinX/UT.7.01x/3T2014/56c5437b88fa43cf828bff5371c6a924/">webpage</a> details the short installation process. If RStudio is already installed, check the version that is currently being used (Help -&gt; About RStudio). These scripts were written in Version 1.1.453, so if you have an older version, you may want to upgrade (Help -&gt; Check for Update -&gt; follow instructions). Currently, a Windows machine must be used for data importation.</p>
-<p>Once RStudio is installed, or if it is already installed, the scripts are designed to be copied and pasted into the RStudio editor. In order to keep the scripts organized, it is suggested that a header is commented out (<code>#</code>) for each code chunk corresponding to these instructions. For example, for the first step of loading packages, type in <code># 1.1</code> as the header.</p>
+<p>The initial setup of the data tables and establishing a connection to the database will likely require a decent input of time. Once, however, this is accomplished, implementing the scripts should be a fairly quick process.</p>
+<p>In order to implement the following R scripts, RStudio must be installed. If RStudio is not installed, it can be downloaded for free from <a href="https://www.rstudio.com/" class="uri">https://www.rstudio.com/</a>. This <a href="https://courses.edx.org/courses/UTAustinX/UT.7.01x/3T2014/56c5437b88fa43cf828bff5371c6a924/">webpage</a> details the short installation process. If RStudio is already installed, check which version is installed (Help -&gt; About RStudio). These scripts were written in Version 1.1.453, so if you have an older version, you may want to upgrade (Help -&gt; Check for Update -&gt; follow instructions). Currently, the directions for connecting to the database are written for a Windows machine.</p>
+<p>Once RStudio is installed, or if it is already installed on your computer, the scripts are designed to be copied and pasted into the RStudio editor. In order to keep the scripts organized, it is suggested that a header is commented out, using <code># text</code>, for each code chunk corresponding to these instructions. For example, for the first step of loading packages, type in <code># 1.1</code> as the header.</p>
 <p>For those who are new to RStudio, each time a data frame is created, it can be viewed by typing <code>View(name)</code> in the console or by clicking its name in the Environment tab on the right.</p>
 </div>
 <div id="data-preparation" class="section level3">
 <h3><strong>1. Data Preparation</strong></h3>
-<p>Most macroinvertebrate assemblage data are formatted in a similar manner; however, rarely can data sets from two separate entities be joined without some manipulation. The data preparation functions outlined below manipulate the data to meet formatting requirements necessary for using several custom functions. For these functions to be useful, you must first prepare the data using the provided functions outlined below.</p>
-<p>The following tables are required for the scripts to work, and they will be pulled from an MS Access database.</p>
+<p>Most macroinvertebrate assemblage data are formatted in a similar manner; however, rarely can data sets from two separate entities be joined without some manipulation. The data preparation steps below manipulate the data to meet formatting requirements necessary for the BIBI calcualtion steps.</p>
+<p>You will need to have your data in an MS Access database. It needs to contain the follow tables:</p>
 <ul>
 <li>TAB_EVENT<br />
 </li>
@@ -257,14 +257,13 @@ div.tocify {
 </li>
 <li>TAB_MASTER_TAXA_LIST</li>
 </ul>
-<p>Please refer to the (name and url) document and practice data set for information about setting up the tables above. Data may be entered in uppercase or lowercase, but all text will be converted to lowercase during the data preparation process. The document also contains several keys that explain codes and acronyms that were used. The codes and acronyms can be used as a template for your data tables. Some of the information that the codes pertain to can be found in domain lists on the bottom of the <a href="https://www.waterqualitydata.us/portal_userguide/">Water Quality Portal User Guide</a> page. The lists that may be useful are Habit, RelativeDepth, AnalyticalMethod, FrequencyClassDescriptor, MeasurementUnit, SampleCollectionEquipment, and Taxon. Finally, it is important that you name all the columns and tables in the same way as they appear in the document, otherwise the scripts will not work.</p>
+<p>Please refer to the (name and url) document and (name and url) practice data set for information about setting up the tables above. Data may be entered in uppercase or lowercase, but all text will be converted to lowercase during the data preparation process. The document also contains several keys that explain codes and acronyms that were used. The codes and acronyms can be used as a template for your data tables. Some of the information that the codes pertain to can be found in domain lists on the bottom of the <a href="https://www.waterqualitydata.us/portal_userguide/">Water Quality Portal User Guide</a> page. The lists that may be useful are Habit, RelativeDepth, AnalyticalMethod, FrequencyClassDescriptor, MeasurementUnit, SampleCollectionEquipment, and Taxon. It is very important that you name all the columns and tables in the same way as they appear in the document, or the scripts will not work.</p>
 <div id="section" class="section level4">
 <h4><strong>1.1</strong></h4>
-<p>Set the working directory to a location where the scripts and generated CSV files can be saved using <code>setwd(&quot;&quot;)</code>. Don’t forget to use a forward slash <code>/</code> instead of a backward slash <code>\</code> in the path name.</p>
-<p>Load the following packages into the environment. The packages must be installed before they can be opened; to check if a package in already installed, refer to the Packages tab on the right. To install a package, either type and run <code>install.packages(&quot;name&quot;)</code> or use the Install button under the Packages tab. To open the installed libraries, type and run <code>library(name)</code>.</p>
-<ul>
-<li><em>bibi2.0</em> is a custom package developed by Zachary Smith used to automate the data preparation process. To download this package, first install the <code>devtools</code> package and run the following script: <code>devtools::install_github(&quot;InterstateCommissionPotomacRiverBasin/bibi2.0&quot;)</code>. Load using <code>library(bibi2.0)</code>.</li>
-</ul>
+<p>Open a new RScript (File &gt; New File &gt; R Script) and save it.</p>
+<p>Set the working directory to the location where you saved your R Script file using <code>setwd(&quot; &quot;)</code>. For example, <code>setwd(&quot;C:/Documents/My folder&quot;)</code>. Don’t forget to use a forward slash <code>/</code> instead of a backward slash <code>\</code> in the path name. This is also the location where any CSV files you generate will be saved.</p>
+<p>Load the packages below into the environment. The packages must be installed before they can be opened. To check if a package is already installed, go to the Packages tab on the right and either scroll to find it or type in the name in the search bar. To install a package, either use <code>install.packages(&quot;name&quot;)</code> or the Install button in the Packages tab. To open an installed library, use <code>library(name)</code>.</p>
+<p><em>bibi2.0</em> is a custom package developed by Zachary Smith, and functions from it will be used to automate the data preparation process. To download this package you will need to have the <code>devtools</code> package installed. Then run the following script: <code>devtools::install_github(&quot;InterstateCommissionPotomacRiverBasin/bibi2.0&quot;)</code> and load using the scripts below.</p>
 <pre class="r"><code>library(tidyverse)
 library(stringr)
 library(lubridate)
@@ -279,20 +278,20 @@ library(ggplot2)</code></pre>
 </div>
 <div id="section-1" class="section level4">
 <h4><strong>1.2</strong></h4>
-<p>Import the following tables from the Microsoft Access database. This process will differ depending both on which Windows operating system and Microsoft Office, 64-bit or 32-bit, is used. To check which Windows operating system is on your computer, follow the directions on <a href="https://support.microsoft.com/en-us/help/13443/windows-which-operating-system">this</a> to check. Refer to <a href="https://support.office.com/en-us/article/about-office-what-version-of-office-am-i-using-932788b8-a3ce-44bf-bb09-e334518b8b19">this</a> site to determine which version of Microsoft Office is installed.</p>
+<p>Import the following tables from your Microsoft Access database. This process will differ depending on whether your computer uses a 64-bit or 32-bit Windows operating system and Microsoft Office. If you are unsure of which Windows operating system your computer has, follow the directions on <a href="https://support.microsoft.com/en-us/help/13443/windows-which-operating-system">this</a> site to check. Refer to <a href="https://support.office.com/en-us/article/about-office-what-version-of-office-am-i-using-932788b8-a3ce-44bf-bb09-e334518b8b19">this</a> site to determine which version of Microsoft Office is installed.</p>
 <p>An Open Database Connectivity (ODBC) interface is used to link the MS Access database to RStudio. If you need help establishing the ODBC connection, refer to <a href="https://www.youtube.com/watch?v=Uh0pLPS3R5Y">this</a> YouTube video.</p>
 <p>If the Windows operating system and MS Office are both either 64-bit or 32-bit, establishing the connection should not present a challenge, but extra steps need to be taken if the operating system is 64-bit and MS Office is 32-bit:</p>
 <ol style="list-style-type: decimal">
 <li>When downloading the driver, <a href="https://www.microsoft.com/en-us/download/details.aspx?id=13255">Microsoft Access Database Engine 2010</a>, select AccessDatabaseEngine.exe, not AccessDatabaseEngine_X64.exe.<br />
 </li>
-<li>Once the MS Access Database Engine is installed, click the “Windows key” + “R”, or go to Start &gt; Run and type the following into the Run dialog: <code>c:\windows\sysWOW64\odbcad32.exe</code></li>
-<li>You can now go back to the ODBC Data Source Administrator and proceed with setting up the ODBC connection.<br />
+<li>Once the MS Access Database Engine is installed, press the “Windows key” + “R”, or go to Start &gt; Run and type the following into the Run dialog: <code>c:\windows\sysWOW64\odbcad32.exe</code></li>
+<li>You can now go back to the ODBC Data Source Administrator and proceed with adding your database.<br />
 </li>
-<li>The last step is to change RStudio to the 32-bit version. Tools &gt; Global Options &gt; General &gt; change the version to 32-bit.</li>
+<li>The last step is to change RStudio to the 32-bit version. Go to Tools &gt; Global Options &gt; General &gt; change the version to 32-bit.</li>
 </ol>
-<p>Once the ODBC connection is established, use the <em>bibi2.0</em> function, <code>clean_data_frame()</code>, is implemented, setting all text to lowercase and removing unwanted spaces in the data.</p>
-<p><strong>NOTE</strong> You will probably not want to name your database CBIBI_2017, as the database used for these instructions was. Therefore, when you have established the ODBC connections with your own database, change the code below from <code>channel &lt;- dbConnect(odbc(), &quot;CBIBI_2017&quot;)</code> to <code>channel &lt;- dbConnect(odbc(), &quot;your_database_name&quot;)</code>.</p>
-<p>Windows 64-bit:</p>
+<p><strong>NOTE</strong> The databse used in these instructions is named CBIBI_2017, but, as yours will no doubt have a different name, change the code below from <code>channel &lt;- dbConnect(odbc(), &quot;CBIBI_2017&quot;)</code> to <code>channel &lt;- dbConnect(odbc(), &quot;your_database_name&quot;)</code>.</p>
+<p>Once the ODBC connection is established and the tables from your databse have been imported, the <em>bibi2.0</em> function, <code>clean_data_frame()</code>, is implemented. This sets all the text entries to lowercase and removes any spaces before and after a data entry.</p>
+<p>Windows 64-bit with MS Office 64-bit or 32-bit:</p>
 <pre class="r"><code>channel &lt;- dbConnect(odbc(), &quot;CBIBI_2017&quot;)
 
 tab.vec &lt;- c(&quot;TAB_EVENT&quot;, 
@@ -311,7 +310,7 @@ tab.vec &lt;- c(&quot;TAB_EVENT&quot;,
   set_names(tolower(tab.vec))
 
 dbDisconnect(channel)</code></pre>
-<p>Windows 32-bit:</p>
+<p>Windows 32-bit with MS Office 32-bit:</p>
 <pre class="r"><code>channel &lt;- RODBC::odbcConnect(&quot;CBIBI_2017&quot;)
 
 tab.vec &lt;- c(&quot;TAB_EVENT&quot;,
@@ -333,7 +332,7 @@ RODBC::odbcCloseAll()</code></pre>
 </div>
 <div id="section-2" class="section level4">
 <h4><strong>1.3</strong></h4>
-<p>Join the Master Taxa List to the taxonomic count table using the <em>tsn_final</em> column. Then, apply the <code>prep_taxa()</code> function in the <em>bibi2.0</em> package to perform taxa exclusions and roll-ups (Final Report, Pages 6-7). This step also creates a new column called unique_id, which is a combination of event_id and sample_num. The unique_id will be used extensively in the rest of the scripts.</p>
+<p>Join the Master Taxa List to the taxonomic count table using the <em>tsn_final</em> column. Then, apply the <code>prep_taxa()</code> function from the <em>bibi2.0</em> package to perform the taxa exclusions and roll-ups described on pages 6-7 in the Final Report. This step also creates a new variable, unique_id, which is a combination of event_id and sample_num. The unique_id will be used extensively in the rest of the scripts.</p>
 <pre class="r"><code> tab.list$tab_taxonomic_count &lt;- tab.list$tab_taxonomic_count %&gt;% 
    dplyr::mutate(tsn_final = str_replace_all(tsn_final, &quot;(?&lt;![0-9])0+&quot;, &quot;&quot;)) %&gt;% 
    left_join(tab.list$tab_master_taxa_list, by = &quot;tsn_final&quot;) %&gt;% 
@@ -341,11 +340,11 @@ RODBC::odbcCloseAll()</code></pre>
 </div>
 <div id="section-3" class="section level4">
 <h4><strong>1.4</strong></h4>
-<p>Apply the <code>prep_data()</code> function from the <em>bibi2.0</em> package to the indicated tables. Several prepping functions are nested within <code>prep_data()</code>, including:</p>
+<p>Perform method standardizations as described on page 5 of the Final Report by applying the <code>prep_data()</code> function from the <em>bibi2.0</em> package to the indicated tables. Several functions are nested within <code>prep_data()</code>, including:</p>
 <ol style="list-style-type: decimal">
-<li><p>Water quality prep function: select only specific conductivity, dissolved oxygen, and pH and add as new columns;</p></li>
-<li><p>Habitat prep function: select only epifaunal substrate, bank stability, embeddedness, channel alteration, riffle/run/pool/ ratio, flow, bank vegetation, and sedimentation, then calculate habitat conditions;</p></li>
-<li><p>Method prep function: exclude samples collected from December to February; include only samples from 1<sup>st</sup> - 4<sup>th</sup> order streams; restrict the sampling method to kick-net or similar procedures.</p></li>
+<li><p>Water quality prep function: select only specific conductivity, dissolved oxygen, and pH;</p></li>
+<li><p>Habitat prep function: select only epifaunal substrate, bank stability, embeddedness, channel alteration, riffle/run/pool/ ratio, flow, bank vegetation, and sedimentation, then calculate habitat conditions (produces na_hab, hab_6, hab_12, and hab_16 columns);</p></li>
+<li><p>Method prep function: exclude samples collected from December to February, include only samples from 1<sup>st</sup> - 4<sup>th</sup> order streams, and restrict the sampling method to kick-net or similar procedures.</p></li>
 </ol>
 <p>The output is <strong>prep.df</strong>, one large data frame which contains all of the taxa, water quality, and habitat data.</p>
 <pre class="r"><code>prep.df &lt;- prep_data(tab.list$tab_taxonomic_count,
@@ -359,7 +358,7 @@ RODBC::odbcCloseAll()</code></pre>
 </div>
 <div id="section-4" class="section level4">
 <h4><strong>1.5</strong></h4>
-<p>Convert the Functional Feeding Group (FFG) and Habit codes to full names. This adds two new columns, <em>ffg</em> and <em>habit</em>, to <strong>prep.df2</strong>, which will be used instead of <em>bibi_ffg</em> and <em>bibi_habit</em>.</p>
+<p>Convert the Functional Feeding Group (FFG) and Habit codes to full names. This adds two new columns, <em>ffg</em> and <em>habit</em>, to <strong>prep.df2</strong>, which will be used instead of <em>bibi_ffg</em> and <em>bibi_habit</em> in later scripts.</p>
 <pre class="r"><code>prep.df2 &lt;-
     dplyr::mutate(prep.df, ffg = case_when(
     is.na(bibi_ffg) | bibi_ffg == &quot;&quot; ~ as.character(NA),
@@ -371,8 +370,7 @@ RODBC::odbcCloseAll()</code></pre>
     bibi_ffg == &quot;om&quot; ~ &quot;omnivore&quot;,
     bibi_ffg == &quot;pa&quot; ~ &quot;parasite&quot;,
     bibi_ffg %in% c(&quot;pc&quot;, &quot;pi&quot;) ~ &quot;pierce&quot;,
-    TRUE ~ &quot;ERROR&quot;
-  ),
+    TRUE ~ &quot;ERROR&quot;),
   habit = case_when(
     is.na(bibi_habit) | bibi_habit == &quot;&quot; ~ as.character(NA),
     bibi_habit == &quot;sp&quot; ~ &quot;sprawl&quot;,
@@ -381,9 +379,7 @@ RODBC::odbcCloseAll()</code></pre>
     bibi_habit == &quot;bu&quot; ~ &quot;burrow&quot;,
     bibi_habit == &quot;sw&quot; ~ &quot;swim&quot;,
     bibi_habit == &quot;sk&quot; ~ &quot;skate&quot;,
-    TRUE ~ &quot;ERROR&quot;
-  )
-)</code></pre>
+    TRUE ~ &quot;ERROR&quot;))</code></pre>
 </div>
 <div id="section-5" class="section level4">
 <h4><strong>1.6</strong></h4>
@@ -424,8 +420,8 @@ taxa.df &lt;- prep.df2 %&gt;%
 <div id="section-6" class="section level4">
 <h4><strong>1.7</strong></h4>
 <p>Perform probabilistic rarefaction as described on Final Report page 7 and Appendix D.</p>
-<p>The Chessie BIBI uses rarefied counts of 100 because because that was the lowest common denominator among all the agencies and programs represented in the Chessie BIBI database. The Chessie BIBI was designed using rarefied counts of 100; therefore, changing the sample size will SOMETHING. If, however, you would like to change the rarefied counts to a value other than 100, substitute your number for 100 in the 4<sup>th</sup> line of code below: <code>mutate(ratio = YOUR_NUMBER*(reporting_value/sample_sum)) %&gt;%</code>.</p>
-<p><strong>WARNING:</strong> every time you rerun the rarefaction scripts below, the resulting data frame will have different rarefied counts for rare species. To preserve the data frame generated at the end of the rarefaction scripts, <strong>taxa.df</strong>, export it as a CSV file and import it prior to the metric calculation steps if you do not plan on running all of the code in one sitting.</p>
+<p>The Chessie BIBI uses rarefied counts of 100 because because that was the lowest common denominator among all the agencies and programs represented in the Chessie BIBI database. Changing the sample size to a number other than 100 will alter the final outcome, but if you decide to change the sample size, substitute your number for 100 in the 4<sup>th</sup> line of code below: <code>mutate(ratio = YOUR_NUMBER*(reporting_value/sample_sum)) %&gt;%</code>.</p>
+<p><strong>WARNING:</strong> every time you rerun the rarefaction scripts below, the resulting data frame will have different rarefied counts for rare species. To preserve the data frame generated by rarefaction, <strong>taxa.df</strong>, export it as a CSV file. If you need to stop and close the document now, import the rarefied dataset CSV table prior to the next step, which is the metric calculations.</p>
 <pre class="r"><code>taxa2.df &lt;- taxa.df %&gt;%                                                                      
   group_by(unique_id) %&gt;%                                                                               
   mutate(sample_sum = sum(reporting_value)) %&gt;%                                                         
@@ -457,25 +453,27 @@ taxa.df &lt;- prep.df2 %&gt;%
  taxa.df &lt;- taxa_join %&gt;%                                                                               
   select(unique_id, icprb_bioregion_id, rare_count, final_id, phylum, subphylum, class, subclass, order, suborder, family, subfamily, tribe, genus, habit, ffg, bibi_tv)</code></pre>
 <p><strong>Optional:</strong><br />
-If you would like to preserve the rarefied data frame created above, export it as a CSV. Don’t forget to replace <code>file=</code> with your own file name.</p>
-<pre class="r"><code>write.csv(taxa.df, file= &quot;name_of_file.csv&quot;)</code></pre>
+If you would like to preserve the rarefied data frame created above, export it as a CSV. The CSV will be stored in the working directory that you have specified.</p>
+<pre class="r"><code>write.csv(taxa.df, file= &quot;taxa.df.csv&quot;)</code></pre>
 </div>
 </div>
-<div id="calculating-biological-metrics" class="section level3">
-<h3><strong>2. Calculating Biological Metrics</strong></h3>
-<p>Now that the data are in the proper format and the samples have been rarefied, the biological metrics can be calcualted. Please refer to Appendix E for their formulas. To streamline this process, all of the metrics are computed for each unique sampling event (unique_id). Later on, metrics specific to each bioregion will be selected.</p>
-<p>The first step is to generate a new data frame for the non-rarefied and rarefied data, both of which are needed because not all metrics calculations require rarefied data.<br />
-Next, a data frame, <strong>metrics.key</strong>, will be generated. <strong>metrics.key</strong> initially only contains the following columns: unique_id, icprb_bioregion_id, event_latitude, event_longitude, and huc_12, but each calculated metric is appended using <code>metrics.key$new_column &lt;-</code>.</p>
+<div id="calculating-the-biological-metrics" class="section level3">
+<h3><strong>2. Calculating the Biological Metrics</strong></h3>
+<p>Now that the data are in the proper format and the reporting values have been rarefied, the biological metrics can be calculated. The metric formulas are located in Appendix E. Please note that the appendix contains descriptions of all the metrics tested during the development of the Chessie BIBI, so includes several that did not eventually end up as part of the BIBI.</p>
+<p>The scripts below compute all of the metrics included in the Chessie BIBI for each unique sampling event (unique_id). Later on, metrics specific to each bioregion will be selected out.</p>
+<p>The first step is to generate a new data frame for the non-rarefied and rarefied data, both of which are needed because not all metric calculations require rarefied data. Then, a data frame, <strong>metrics.key</strong>, will be generated. <strong>metrics.key</strong> initially only contains the following columns: unique_id, icprb_bioregion_id, event_latitude, event_longitude, and huc_12, but each calculated metric is appended using the <code>$</code> notation; for example <code>metrics.key$new_column &lt;-</code>.</p>
 <pre class="r"><code># Create a data frame of the non-rarefied and rarefied data.
 non_rare &lt;- prep.df2 %&gt;%
    arrange(unique_id) %&gt;%
    ungroup()
 
-# If you had exported the rarefied data as a CSV above, read it in at this time using: read.csv(&quot;name_of_file.csv&quot;)
 rare &lt;- taxa.df %&gt;%
  arrange(unique_id) %&gt;%
  ungroup()
-  
+
+# If you had exported the rarefied data as a CSV above, read it in at this time using the script below. Don't forget to uncomment the script by removing the #. 
+# taxa.df &lt;- read.csv(&quot;taxa.df.csv&quot;)
+
 # Create the metrics.key data frame.
 metrics.key &lt;- non_rare %&gt;%              
  select(unique_id, icprb_bioregion_id, event_latitude, event_longitude, huc_12) %&gt;%
@@ -809,7 +807,7 @@ pct_urban_intol &lt;- non_rare %&gt;%
     &quot;viviparidae&quot;)]))  
   metrics.key$pct_urban_intol &lt;- (pct_urban_intol$sum / sample_sum$sample_sum )*100 
 
-# Richness/Diversity metrics require rarefied data
+# Richness and diversity metrics require rarefied data
 # Calculate family-level taxa richness for each unique_id
 family_richness &lt;- rare %&gt;%
  group_by(unique_id) %&gt;%
@@ -1112,14 +1110,14 @@ rich_trichoptera &lt;- rare  %&gt;%
  select(unique_id, rich_trichoptera) 
  metrics.key &lt;- merge(metrics.key, rich_trichoptera, by = &quot;unique_id&quot;, all=TRUE)
  metrics.key[is.na(metrics.key)] &lt;- 0 </code></pre>
-<p>To download metrics.key as a CSV, run the following script. The CSV will be stored in the working directory that you have set up. Don’t forget to replace <code>file=</code> with your own file name.</p>
+<p>To download metrics.key as a CSV, run the following script. The CSV will be stored in the working directory that you have specified. Don’t forget to replace <code>file=</code> with your own file name.</p>
 <pre class="r"><code>write.csv(metrics.key, file= &quot;name_of_file.csv&quot;)</code></pre>
 </div>
 <div id="metric-scoring" class="section level3">
 <h3><strong>3. Metric Scoring</strong></h3>
 <div id="section-7" class="section level4">
 <h4><strong>3.1</strong></h4>
-<p>Subset <strong>metrics.key</strong> by bioregion, creating a new data frame for each of the twelve bioregions.</p>
+<p>Subset <strong>metrics.key</strong> by bioregion to create twelve new data frames.</p>
 <pre class="r"><code>NAPU &lt;- metrics.key %&gt;% filter(icprb_bioregion_id == &quot;napu&quot;)
 NCA &lt;- metrics.key %&gt;% filter(icprb_bioregion_id == &quot;nca&quot;)
 CA &lt;- metrics.key %&gt;% filter(icprb_bioregion_id == &quot;ca&quot;)
@@ -1135,7 +1133,7 @@ PIED &lt;- metrics.key %&gt;% filter(icprb_bioregion_id == &quot;pied&quot;)</co
 </div>
 <div id="section-8" class="section level4">
 <h4><strong>3.2</strong></h4>
-<p>Create a data frame that contains the names of metrics specific to each of the twelve bioregions. A list of the metrics in each bioregion can be found in Table 15, Page 44 of the Final Report. One change has been made from the original list of metrics: pct_predator was removed from NAPU, as it was deemed unnecessary.</p>
+<p>Create a data frame for each of the twelve bioregions that contains only the metrics specific to that bioregion. A list of the metrics used for each bioregion can be found in Table 15, Page 44 of the Final Report. One change has been made from the original list of metrics: pct_predator was removed from NAPU, as it was deemed unnecessary.</p>
 <pre class="r"><code>#Northern Appalachian Plateau and Uplands (NAPU)
 NAPU_score &lt;- NAPU %&gt;%
   select(
@@ -1388,9 +1386,9 @@ PIED_score &lt;- PIED %&gt;%
 </div>
 <div id="section-9" class="section level4">
 <h4><strong>3.3</strong></h4>
-<p>Score the metrics. This was done using the following steps:</p>
+<p>Score the metrics using the approach described on pages 20-21 in the Final Report and outlined below:</p>
 <ol style="list-style-type: decimal">
-<li><p>Scroll to Final Report Table 15, Page 44. This table can also be <a href="https://www.potomacriver.org/wp-content/uploads/2014/12/metric_thresholds_06292017.csv">downloaded</a> from the ICPRB website, but it will need to be filtered so that it only contains bioregion and family data.</p></li>
+<li><p>Go to Final Report Table 15, Page 44. This table can also be <a href="https://www.potomacriver.org/wp-content/uploads/2014/12/metric_thresholds_06292017.csv">downloaded</a> from the ICPRB website, but it will need to be filtered so that it only contains bioregion and family data.</p></li>
 <li><p>Use the <em>Influence of Disturbance</em> column in that table to determine whether a given metric increases or decreases with disturbance.</p></li>
 <li><p>On Final Report Page 21, select Equation 5 if the metric decreases with disturbance and Equation 6 if the metric increases with disturbance.</p></li>
 <li><p>Refer to Table 15 again. The <em>Reference Median</em> and <em>Bound</em> columns correspond to <em>X<sub>M</sub></em> and <em>X<sub>T</sub></em> in the equations, respectively. The scoring equations are implemented below.</p></li>
@@ -2263,8 +2261,7 @@ PIED_score$score_rich_trichoptera &lt;-
 <div id="calculating-the-chessie-bibi" class="section level3">
 <h3><strong>4. Calculating the CHESSIE BIBI</strong></h3>
 <p>Average the metric score columns for each unique_id with <code>rowMeans</code> and <code>[row,column]</code>. In <code>[row,column]</code>, ‘row’ is left blank, indicating that all rows are to be used, and ‘column’ has the range of column numbers containing scores. If you added or removed columns, you will need to adjust the column ranges.</p>
-<p><code>na.rm = T</code> excludes any cells that contain an NA from the calculation.</p>
-<p>The resulting mean value is the Chessie BIBI. It is assigned using <code>bioregion_score$chessie_bibi &lt;-</code> and outputted in a column called <em>chessie_bibi</em>.</p>
+<p>The resulting mean value is the Chessie BIBI for each unique_id, and it is located in a new column called <em>chessie_bibi</em>, assigned using <code>bioregion_score$chessie_bibi &lt;-</code>.</p>
 <pre class="r"><code>NAPU_score$chessie_bibi &lt;- rowMeans(NAPU_score[ ,25:43], na.rm = T)
 NCA_score$chessie_bibi  &lt;- rowMeans(NCA_score[ ,15:23], na.rm = T)
 CA_score$chessie_bibi   &lt;- rowMeans(CA_score[ ,19:31], na.rm = T)
@@ -2280,7 +2277,7 @@ PIED_score$chessie_bibi &lt;- rowMeans(PIED_score[ ,14:21], na.rm = T) </code></
 </div>
 <div id="assigning-narrative-ratings" class="section level3">
 <h3><strong>5. Assigning Narrative Ratings</strong></h3>
-<p>Use Table 5, Final Report Page 27 to access the values used to assign narrative ratings of Excellent, Very Good, Fair, Poor, or Very Poor to the Chessie BIBI value. The values are different in the various bioregions.</p>
+<p>Use Table 5, Final Report Page 27 to assign narrative ratings of Excellent, Very Good, Fair, Poor, or Very Poor to the Chessie BIBI values.</p>
 <pre class="r"><code>NAPU_score$rating &lt;-
   case_when(
     NAPU_score$chessie_bibi &lt; 17.9 ~ &quot;very_poor&quot;,
@@ -2418,7 +2415,7 @@ bind8 &lt;- rbind(bind7, UNP_sub)
 bind9 &lt;- rbind(bind8, SGV_sub)
 bind10 &lt;- rbind(bind9, LNP_sub)
 bibi_ratings_combined &lt;- rbind(bind10, PIED_sub)</code></pre>
-<p>To download a CSV of the Chessie BIBI ratings of all bioregions, use the following script. Don’t forget to replace <code>file=</code> with your own file name.</p>
+<p>To download a CSV of the Chessie BIBI ratings of all bioregions, use the following script. The CSV will be stored in the working directory that you have specified. Don’t forget to replace <code>file=</code> with your own file name.</p>
 <pre class="r"><code>write.csv(bibi_ratings_combined, file= &quot;name_of_file.csv&quot;)</code></pre>
 </div>
 <div id="section-11" class="section level4">
