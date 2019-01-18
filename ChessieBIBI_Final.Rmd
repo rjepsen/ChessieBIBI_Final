@@ -10,18 +10,18 @@ output:
 This R-script and documentation is intended as a supplement to the [Smith et al. (2017) final report](https://www.potomacriver.org/wp-content/uploads/2017/05/ChessieBIBI_Report_Final_5-25-2017.pdf) and [appendices](https://www.potomacriver.org/wp-content/uploads/2017/05/ChessieBIBI_Appendix_Final_5-25-2017.pdf). Use the following scripts to calculate the family-and bioregion- level “Chessie BIBI,” or Chesapeake Basin-wide Index of Biotic Integrity for streams and wadeable rivers in the Chesapeake Bay watershed.      
 
 ###**Before You Get Started**  
-The initial setup of the data tables, installation of the custom packages, and establishing the ODBC connection to the database will likely require a decent input of time. Once, however, this is accomplished, running the scripts should be a fairly quick process.      
+The initial setup of the data tables and establishing a connection to the database will likely require a decent input of time. Once, however, this is accomplished, implementing the scripts should be a fairly quick process.      
 
-In order to implement the following R scripts, RStudio must be installed. If RStudio is not installed, it can be downloaded for free from [https://www.rstudio.com/](https://www.rstudio.com/). This [webpage](https://courses.edx.org/courses/UTAustinX/UT.7.01x/3T2014/56c5437b88fa43cf828bff5371c6a924/) details the short installation process. If RStudio is already installed, check the version that is currently being used (Help -> About RStudio). These scripts were written in Version 1.1.453, so if you have an older version, you may want to upgrade (Help -> Check for Update -> follow instructions). Currently, a Windows machine must be used for data importation.    
+In order to implement the following R scripts, RStudio must be installed. If RStudio is not installed, it can be downloaded for free from [https://www.rstudio.com/](https://www.rstudio.com/). This [webpage](https://courses.edx.org/courses/UTAustinX/UT.7.01x/3T2014/56c5437b88fa43cf828bff5371c6a924/) details the short installation process. If RStudio is already installed, check which version is installed (Help -> About RStudio). These scripts were written in Version 1.1.453, so if you have an older version, you may want to upgrade (Help -> Check for Update -> follow instructions). Currently, the directions for connecting to the database are written for a Windows machine.      
 
-Once RStudio is installed, or if it is already installed, the scripts are designed to be copied and pasted into the RStudio editor. In order to keep the scripts organized, it is suggested that a header is commented out (`#`) for each code chunk corresponding to these instructions. For example, for the first step of loading packages, type in `# 1.1` as the header.      
+Once RStudio is installed, or if it is already installed on your computer, the scripts are designed to be copied and pasted into the RStudio editor. In order to keep the scripts organized, it is suggested that a header is commented out, using `# text`, for each code chunk corresponding to these instructions. For example, for the first step of loading packages, type in `# 1.1` as the header.        
 
-For those who are new to RStudio, each time a data frame is created, it can be viewed by typing `View(name)` in the console or by clicking its name in the Environment tab on the right.  
+For those who are new to RStudio, each time a data frame is created, it can be viewed by typing `View(name)` in the console or by clicking its name in the Environment tab on the right.    
 
 ###**1. Data Preparation**   
-Most macroinvertebrate assemblage data are formatted in a similar manner; however, rarely can data sets from two separate entities be joined without some manipulation. The data preparation functions outlined below manipulate the data to meet formatting requirements necessary for using several custom functions. For these functions to be useful, you must first prepare the data using the provided functions outlined below.  
+Most macroinvertebrate assemblage data are formatted in a similar manner; however, rarely can data sets from two separate entities be joined without some manipulation. The data preparation steps below manipulate the data to meet formatting requirements necessary for the BIBI calcualtion steps.     
 
-The following tables are required for the scripts to work, and they will be pulled from an MS Access database.   
+You will need to have your data in an MS Access database. It needs to contain the follow tables:   
 
 * TAB_EVENT  
 * TAB_STATIONS     
@@ -32,14 +32,16 @@ The following tables are required for the scripts to work, and they will be pull
 * TAB_HUC_12  
 * TAB_MASTER_TAXA_LIST  
   
-Please refer to the (name and url) document and practice data set for information about setting up the tables above. Data may be entered in uppercase or lowercase, but all text will be converted to lowercase during the data preparation process. The document also contains several keys that explain codes and acronyms that were used. The codes and acronyms can be used as a template for your data tables. Some of the information that the codes pertain to can be found in domain lists on the bottom of the [Water Quality Portal User Guide](https://www.waterqualitydata.us/portal_userguide/) page. The lists that may be useful are Habit, RelativeDepth, AnalyticalMethod, FrequencyClassDescriptor, MeasurementUnit, SampleCollectionEquipment, and Taxon. Finally, it is important that you name all the columns and tables in the same way as they appear in the document, otherwise the scripts will not work.       
+Please refer to the (name and url) document and (name and url) practice data set for information about setting up the tables above. Data may be entered in uppercase or lowercase, but all text will be converted to lowercase during the data preparation process. The document also contains several keys that explain codes and acronyms that were used. The codes and acronyms can be used as a template for your data tables. Some of the information that the codes pertain to can be found in domain lists on the bottom of the [Water Quality Portal User Guide](https://www.waterqualitydata.us/portal_userguide/) page. The lists that may be useful are Habit, RelativeDepth, AnalyticalMethod, FrequencyClassDescriptor, MeasurementUnit, SampleCollectionEquipment, and Taxon. It is very important that you name all the columns and tables in the same way as they appear in the document, or the scripts will not work.           
 
 ####**1.1** 
-Set the working directory to a location where the scripts and generated CSV files can be saved using `setwd("")`. Don't forget to use a forward slash `/` instead of a backward slash `\` in the path name.   
+Open a new RScript (File > New File > R Script) and save it.    
 
-Load the following packages into the environment. The packages must be installed before they can be opened; to check if a package in already installed, refer to the Packages tab on the right. To install a package, either type and run `install.packages("name")` or use the Install button under the Packages tab. To open the installed libraries, type and run `library(name)`.  
+Set the working directory to the location where you saved your R Script file using `setwd(" ")`. For example, `setwd("C:/Documents/My folder")`. Don't forget to use a forward slash `/` instead of a backward slash `\` in the path name. This is also the location where any CSV files you generate will be saved.       
 
-* *bibi2.0* is a custom package developed by Zachary Smith used to automate the data preparation process. To download this package, first install the `devtools` package and run the following script: `devtools::install_github("InterstateCommissionPotomacRiverBasin/bibi2.0")`. Load using `library(bibi2.0)`.
+Load the packages below into the environment. The packages must be installed before they can be opened. To check if a package is already installed, go to the Packages tab on the right and either scroll to find it or type in the name in the search bar. To install a package, either use `install.packages("name")` or the Install button in the Packages tab. To open an installed library, use `library(name)`.    
+
+*bibi2.0* is a custom package developed by Zachary Smith, and functions from it will be used to automate the data preparation process. To download this package you will need to have the `devtools` package installed. Then run the following script: `devtools::install_github("InterstateCommissionPotomacRiverBasin/bibi2.0")` and load using the scripts below.   
 ```{r message=FALSE, warning=FALSE}
 library(tidyverse)
 library(stringr)
@@ -54,22 +56,22 @@ library(benthos)
 library(ggplot2)
 ```
 ####**1.2**
-Import the following tables from the Microsoft Access database. This process will differ depending both on which Windows operating system and Microsoft Office, 64-bit or 32-bit, is used. To check which Windows operating system is on your computer, follow the directions on [this](https://support.microsoft.com/en-us/help/13443/windows-which-operating-system) to check. Refer to [this](https://support.office.com/en-us/article/about-office-what-version-of-office-am-i-using-932788b8-a3ce-44bf-bb09-e334518b8b19) site to determine which version of Microsoft Office is installed.    
+Import the following tables from your Microsoft Access database. This process will differ depending on whether your computer uses a 64-bit or 32-bit Windows operating system and Microsoft Office. If you are unsure of which Windows operating system your computer has, follow the directions on [this](https://support.microsoft.com/en-us/help/13443/windows-which-operating-system) site to check. Refer to [this](https://support.office.com/en-us/article/about-office-what-version-of-office-am-i-using-932788b8-a3ce-44bf-bb09-e334518b8b19) site to determine which version of Microsoft Office is installed.      
 
 An Open Database Connectivity (ODBC) interface is used to link the MS Access database to RStudio. If you need help establishing the ODBC connection, refer to [this](https://www.youtube.com/watch?v=Uh0pLPS3R5Y) YouTube video.   
 
 If the Windows operating system and MS Office are both either 64-bit or 32-bit, establishing the connection should not present a challenge, but extra steps need to be taken if the operating system is 64-bit and MS Office is 32-bit:  
 
 1. When downloading the driver, [Microsoft Access Database Engine 2010](https://www.microsoft.com/en-us/download/details.aspx?id=13255), select AccessDatabaseEngine.exe, not AccessDatabaseEngine_X64.exe.  
-2. Once the MS Access Database Engine is installed, click the "Windows key" + "R", or go to Start > Run and type the following into the Run dialog: `c:\windows\sysWOW64\odbcad32.exe`
-3. You can now go back to the ODBC Data Source Administrator and proceed with setting up the ODBC connection.  
-4. The last step is to change RStudio to the 32-bit version. Tools > Global Options > General > change the version to 32-bit.  
+2. Once the MS Access Database Engine is installed, press the "Windows key" + "R", or go to Start > Run and type the following into the Run dialog: `c:\windows\sysWOW64\odbcad32.exe`
+3. You can now go back to the ODBC Data Source Administrator and proceed with adding your database.  
+4. The last step is to change RStudio to the 32-bit version. Go to Tools > Global Options > General > change the version to 32-bit.  
 
-Once the ODBC connection is established, use the *bibi2.0* function, `clean_data_frame()`, is implemented, setting all text to lowercase and removing unwanted spaces in the data.  
+**NOTE** The databse used in these instructions is named CBIBI_2017, but, as yours will no doubt have a different name, change the code below from `channel <- dbConnect(odbc(), "CBIBI_2017")` to `channel <- dbConnect(odbc(), "your_database_name")`.   
 
-**NOTE** You will probably not want to name your database CBIBI_2017, as the database used for these instructions was. Therefore, when you have established the ODBC connections with your own database, change the code below from `channel <- dbConnect(odbc(), "CBIBI_2017")` to `channel <- dbConnect(odbc(), "your_database_name")`.  
+Once the ODBC connection is established and the tables from your databse have been imported, the *bibi2.0* function, `clean_data_frame()`, is implemented. This sets all the text entries to lowercase and removes any spaces before and after a data entry.    
 
-Windows 64-bit:
+Windows 64-bit with MS Office 64-bit or 32-bit:
 ```{r}
 channel <- dbConnect(odbc(), "CBIBI_2017")
 
@@ -90,7 +92,7 @@ tab.vec <- c("TAB_EVENT",
 
 dbDisconnect(channel)
 ```
-Windows 32-bit:
+Windows 32-bit with MS Office 32-bit:
 ```{r eval=FALSE}
 channel <- RODBC::odbcConnect("CBIBI_2017")
 
@@ -112,7 +114,7 @@ tab.vec <- c("TAB_EVENT",
 RODBC::odbcCloseAll()
 ```
 ####**1.3**
-Join the Master Taxa List to the taxonomic count table using the *tsn_final* column. Then, apply the `prep_taxa()` function in the *bibi2.0* package to perform taxa exclusions and roll-ups (Final Report, Pages 6-7). This step also creates a new column called unique_id, which is a combination of event_id and sample_num. The unique_id will be used extensively in the rest of the scripts. 
+Join the Master Taxa List to the taxonomic count table using the *tsn_final* column. Then, apply the `prep_taxa()` function from the *bibi2.0* package to perform the taxa exclusions and roll-ups described on pages 6-7 in the Final Report. This step also creates a new variable, unique_id, which is a combination of event_id and sample_num. The unique_id will be used extensively in the rest of the scripts. 
 ```{r}
  tab.list$tab_taxonomic_count <- tab.list$tab_taxonomic_count %>% 
    dplyr::mutate(tsn_final = str_replace_all(tsn_final, "(?<![0-9])0+", "")) %>% 
@@ -120,13 +122,13 @@ Join the Master Taxa List to the taxonomic count table using the *tsn_final* col
    prep_taxa() 
 ```
 ####**1.4**
-Apply the `prep_data()` function from the *bibi2.0* package to the indicated tables. Several prepping functions are nested within `prep_data()`, including:  
+Perform method standardizations as described on page 5 of the Final Report by applying the `prep_data()` function from the *bibi2.0* package to the indicated tables. Several functions are nested within `prep_data()`, including:  
 
-1) Water quality prep function: select only specific conductivity, dissolved oxygen, and pH and add as new columns;  
+1) Water quality prep function: select only specific conductivity, dissolved oxygen, and pH;  
 
-2) Habitat prep function: select only epifaunal substrate, bank stability, embeddedness, channel alteration, riffle/run/pool/ ratio, flow, bank vegetation, and sedimentation, then calculate habitat conditions;   
+2) Habitat prep function: select only epifaunal substrate, bank stability, embeddedness, channel alteration, riffle/run/pool/ ratio, flow, bank vegetation, and sedimentation, then calculate habitat conditions (produces na_hab, hab_6, hab_12, and hab_16 columns);   
 
-3) Method prep function: exclude samples collected from December to February; include only samples from 1^st^ - 4^th^ order streams; restrict the sampling method to kick-net or similar procedures.    
+3) Method prep function: exclude samples collected from December to February, include only samples from 1^st^ - 4^th^ order streams, and restrict the sampling method to kick-net or similar procedures.    
 
 The output is **prep.df**, one large data frame which contains all of the taxa, water quality, and habitat data.  
 ```{r}
@@ -140,7 +142,7 @@ prep.df <- prep_data(tab.list$tab_taxonomic_count,
                      development = FALSE)
 ```
 ####**1.5**
-Convert the Functional Feeding Group (FFG) and Habit codes to full names. This adds two new columns, *ffg* and *habit*, to **prep.df2**, which will be used instead of *bibi_ffg* and *bibi_habit*.
+Convert the Functional Feeding Group (FFG) and Habit codes to full names. This adds two new columns, *ffg* and *habit*, to **prep.df2**, which will be used instead of *bibi_ffg* and *bibi_habit* in later scripts.
 ```{r}
 prep.df2 <-
     dplyr::mutate(prep.df, ffg = case_when(
@@ -153,8 +155,7 @@ prep.df2 <-
     bibi_ffg == "om" ~ "omnivore",
     bibi_ffg == "pa" ~ "parasite",
     bibi_ffg %in% c("pc", "pi") ~ "pierce",
-    TRUE ~ "ERROR"
-  ),
+    TRUE ~ "ERROR"),
   habit = case_when(
     is.na(bibi_habit) | bibi_habit == "" ~ as.character(NA),
     bibi_habit == "sp" ~ "sprawl",
@@ -163,9 +164,7 @@ prep.df2 <-
     bibi_habit == "bu" ~ "burrow",
     bibi_habit == "sw" ~ "swim",
     bibi_habit == "sk" ~ "skate",
-    TRUE ~ "ERROR"
-  )
-)
+    TRUE ~ "ERROR"))
 ```
 ####**1.6**
 Perform general cleaning of the data frame, and use `select` to retain only the indicated columns. The resulting data frame is **taxa.df**, which will be the input to the rarefaction step.
@@ -206,9 +205,9 @@ taxa.df <- prep.df2 %>%
 ####**1.7** 
 Perform probabilistic rarefaction as described on Final Report page 7 and Appendix D.  
 
-The Chessie BIBI uses rarefied counts of 100 because because that was the lowest common denominator among all the agencies and programs represented in the Chessie BIBI database. The Chessie BIBI was designed using rarefied counts of 100; therefore, changing the sample size will SOMETHING. If, however, you would like to change the rarefied counts to a value other than 100, substitute your number for 100 in the 4^th^ line of code below: `mutate(ratio = YOUR_NUMBER*(reporting_value/sample_sum)) %>% `.  
+The Chessie BIBI uses rarefied counts of 100 because because that was the lowest common denominator among all the agencies and programs represented in the Chessie BIBI database. Changing the sample size to a number other than 100 will alter the final outcome, but if you decide to change the sample size, substitute your number for 100 in the 4^th^ line of code below: `mutate(ratio = YOUR_NUMBER*(reporting_value/sample_sum)) %>% `.  
 
-**WARNING:** every time you rerun the rarefaction scripts below, the resulting data frame will have different rarefied counts for rare species. To preserve the data frame generated at the end of the rarefaction scripts, **taxa.df**, export it as a CSV file and import it prior to the metric calculation steps if you do not plan on running all of the code in one sitting.   
+**WARNING:** every time you rerun the rarefaction scripts below, the resulting data frame will have different rarefied counts for rare species. To preserve the data frame generated by rarefaction, **taxa.df**, export it as a CSV file. If you need to stop and close the document now, import the rarefied dataset CSV table prior to the next step, which is the metric calculations.
 ```{r}
 taxa2.df <- taxa.df %>%                                                                      
   group_by(unique_id) %>%                                                                               
@@ -246,22 +245,25 @@ If you would like to preserve the rarefied data frame created above, export it a
 ```{r eval=FALSE}
 write.csv(taxa.df, file= "name_of_file.csv")
 ```
-###**2. Calculating Biological Metrics**  
-Now that the data are in the proper format and the samples have been rarefied, the biological metrics can be calcualted. Please refer to Appendix E for their formulas. To streamline this process, all of the metrics are computed for each unique sampling event (unique_id). Later on, metrics specific to each bioregion will be selected.  
+###**2. Calculating the Biological Metrics**  
+Now that the data are in the proper format and the reporting values have been rarefied, the biological metrics can be calculated. The metric formulas are located in Appendix E. Please note that the appendix contains descriptions of all the metrics tested during the development of the Chessie BIBI, so includes several that did not eventually end up as part of the BIBI.     
 
-The first step is to generate a new data frame for the non-rarefied and rarefied data, both of which are needed because not all metrics calculations require rarefied data.     
-Next, a data frame, **metrics.key**, will be generated. **metrics.key** initially only contains the following columns: unique_id, icprb_bioregion_id, event_latitude, event_longitude, and huc_12, but each calculated metric is appended using `metrics.key$new_column <-`.
+The scripts below compute all of the metrics included in the Chessie BIBI for each unique sampling event (unique_id). Later on, metrics specific to each bioregion will be selected out.    
+
+The first step is to generate a new data frame for the non-rarefied and rarefied data, both of which are needed because not all metrics calculations require rarefied data. Then, a data frame, **metrics.key**, will be generated. **metrics.key** initially only contains the following columns: unique_id, icprb_bioregion_id, event_latitude, event_longitude, and huc_12, but each calculated metric is appended using the `$` notation; for example `metrics.key$new_column <-`.
 ```{r warning=FALSE, message=FALSE}
 # Create a data frame of the non-rarefied and rarefied data.
 non_rare <- prep.df2 %>%
    arrange(unique_id) %>%
    ungroup()
 
-# If you had exported the rarefied data as a CSV above, read it in at this time using: read.csv("name_of_file.csv")
 rare <- taxa.df %>%
  arrange(unique_id) %>%
  ungroup()
-  
+
+# If you had exported the rarefied data as a CSV above, read it in at this time using the script below. Don't forget to uncomment the script by removing the #. 
+# read.csv("name_of_file.csv")
+
 # Create the metrics.key data frame.
 metrics.key <- non_rare %>%              
  select(unique_id, icprb_bioregion_id, event_latitude, event_longitude, huc_12) %>%
