@@ -1,6 +1,6 @@
 ---
 title: "Directions for Calculating the Chessie BIBI in RStudio"
-date: <h4 style="font-style:normal">January 22, 2019</h4>
+date: <h4 style="font-style:normal">January 23, 2019</h4>
 author:
   - name: "Zachary M. Smith, zachary.smith2@dec.ny.gov"
     affiliation: New England Interstate Water Pollution Control Commission
