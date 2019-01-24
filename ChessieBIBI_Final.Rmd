@@ -25,7 +25,7 @@ The R scripts in this document are designed to be copied and pasted into the RSt
 For those who are new to RStudio, please refer to [this](http://www.sthda.com/sthda/RDoc/images/rstudio.png) image for the layout of the RStudio panels. Some helpful R books and webpages are listed below:
 
 * The R Book by Michael J. Crawley  
-* R for Data Science by Hadley Wickham and Garrett Grolemund (PDF: https://r4ds.had.co.nz/index.html)
+* R for Data Science by Hadley Wickham and Garrett Grolemund (https://r4ds.had.co.nz/index.html)
 * Data Camp's free Introduction to R course (https://www.datacamp.com/courses/free-introduction-to-r)
 * An Introduction to R by W.N. Venables, D.M. Smith and the R Core Team   (https://cran.r-project.org/doc/manuals/R-intro.pdf)  
 * Tutorials Point (https://www.tutorialspoint.com/r/r_overview.htm)  
